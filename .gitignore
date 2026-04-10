@@ -1,0 +1,63 @@
+# ─────────────────────────────────────────────────────────────────────────
+#  bpetite — git ignore rules
+#
+#  The six entries required by PRD Task 1-1 (bpetite-task-list.md §1-1)
+#  live in their labelled sections below. Everything else is standard
+#  Python development debris or aligns this file with the commit-time
+#  guard in scripts/hooks/forbid_generated_artifacts.py (see docs/hooks.md
+#  §3.4). Keep the set minimal and grouped; add a new section rather than
+#  appending stray lines.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+# ── Python bytecode ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+# ── Virtual environments ─────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+
+# ── Tool caches (PRD Task 1-1) ───────────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+
+# ── Build artifacts (hatchling, lands in Task 1-2) ───────────────────────
+build/
+dist/
+*.egg-info/
+.eggs/
+
+
+# ── Coverage ─────────────────────────────────────────────────────────────
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+
+# ── Generated corpora and tokenizer artifacts (PRD Task 1-1) ─────────────
+# Mirrors the scope of scripts/hooks/forbid_generated_artifacts.py so that
+# committing one of these files is blocked at two layers: gitignore keeps
+# them out of `git add`, the hook blocks them if they somehow get staged.
+data/tinyshakespeare.txt
+data/tinyshakespeare-*.json
+data/*.json
+/tokenizer.json
+
+
+# ── Secrets (global CLAUDE.md §5) ────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+
+# ── macOS debris ─────────────────────────────────────────────────────────
+.DS_Store
+._*

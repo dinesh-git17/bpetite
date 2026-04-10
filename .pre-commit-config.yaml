@@ -1,0 +1,150 @@
+# bpetite repo hygiene and quality gates.
+#
+# Governance: CLAUDE.md (§3, §6, §7, §10), docs/bpetite-prd-v2.md, docs/bpetite-task-list.md.
+# Full reference: docs/hooks.md.
+#
+# Bootstrap (once per clone):
+#   uv run pre-commit install
+#
+# Run on the whole repo manually:
+#   uv run pre-commit run --all-files
+#   uv run pre-commit run --all-files --hook-stage pre-push
+#
+# Refresh pinned revs:
+#   uv run pre-commit autoupdate
+#
+# Design notes:
+#   - Commit-time hooks are fast and file-scoped; push-time hooks are the full
+#     quality gate (pytest, mypy --strict) scoped to the whole project.
+#   - Ruff runs without --fix: the hook REPORTS violations, it does not silently
+#     mutate files on commit. This matches CLAUDE.md §6.1 ("no silent refactors").
+#   - Ruff lint runs BEFORE ruff format, per Astral's ordering guidance.
+#   - Custom repo-local guards are Python scripts under scripts/hooks/, use only
+#     the standard library, and are portable across macOS and Linux.
+
+minimum_pre_commit_version: "4.5.0"
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+fail_fast: false
+
+repos:
+  # --- Commit approval sentinel (MUST run before every other hook) -------
+  # Blocks raw `git commit`. Every commit must go through scripts/commitall.sh
+  # (or the /commitall slash command), which writes .git/COMMIT_APPROVED just
+  # before invoking `git commit` and removes it on exit. Kept in its own
+  # top-of-file local repo so pre-commit runs it first (hooks fire in the
+  # order repos appear in this file).
+  - repo: local
+    hooks:
+      - id: require-commitall-approval
+        name: require /commitall approval
+        entry: scripts/hooks/require_commitall_approval.py
+        language: script
+        pass_filenames: false
+        always_run: true
+
+  # --- Stock hygiene ------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Preserve intentional two-space Markdown hard line breaks. The PRD
+        # and task-list files rely on these.
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-toml
+      - id: check-yaml
+      - id: check-ast
+      - id: debug-statements
+
+  # --- Ruff: lint THEN format (ordering per Astral README) ----------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.10
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+        args: [--check]
+
+  # --- uv lockfile freshness ----------------------------------------------
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.11.6
+    hooks:
+      - id: uv-lock
+
+  # --- Repo-local custom guards -------------------------------------------
+  - repo: local
+    hooks:
+      - id: forbid-tests-init
+        name: forbid tests/__init__.py
+        entry: scripts/hooks/forbid_tests_init.py
+        language: script
+        files: ^tests/__init__\.py$
+        pass_filenames: true
+
+      - id: forbid-syspath-hacks
+        name: forbid sys.path mutation and PYTHONPATH writes
+        entry: scripts/hooks/forbid_syspath_hacks.py
+        language: script
+        files: ^(src|tests|scripts)/.*\.py$
+        exclude: ^scripts/hooks/.*$
+        pass_filenames: true
+
+      - id: forbid-generated-artifacts
+        name: forbid committing generated corpora and tokenizer artifacts
+        entry: scripts/hooks/forbid_generated_artifacts.py
+        language: script
+        pass_filenames: true
+
+      - id: forbid-core-networking
+        name: forbid networking imports in src/bpetite/
+        entry: scripts/hooks/forbid_core_networking.py
+        language: script
+        files: ^src/bpetite/.*\.py$
+        pass_filenames: true
+
+      - id: forbid-core-normalization
+        name: forbid normalization and trimming calls in the tokenizer pipeline
+        entry: scripts/hooks/forbid_core_normalization.py
+        language: script
+        # Scoped to the tokenizer pipeline modules only. PRD FR-6 is
+        # specifically about the pre-tokenizer / trainer / encoder /
+        # decoder path; CLI and other support code under src/bpetite/
+        # may legitimately call str methods like .lower() on non-token
+        # data (e.g. flag parsing, log formatting).
+        files: ^src/bpetite/_(pretokenizer|trainer|encoder|decoder)\.py$
+        pass_filenames: true
+
+      - id: forbid-stdlib-re-in-tokenizer
+        name: forbid stdlib `re` in tokenizer implementation (use `regex`)
+        entry: scripts/hooks/forbid_stdlib_re.py
+        language: script
+        files: ^src/bpetite/.*\.py$
+        pass_filenames: true
+
+      # --- Heavy gates: pre-push, whole project, via uv ------------------
+      # Both hooks are dormant until `pyproject.toml` exists (PRD task 1-2).
+      # The bash wrapper exits 0 with a stderr notice in the pre-scaffold
+      # state so pre-push doesn't claim a guarantee it cannot honor. Once
+      # task 1-2 lands, these run the full gate, and task 1-2 should also
+      # add `--locked` to both commands for CI parity (PC-002).
+      - id: uv-mypy-strict
+        name: uv run mypy --strict
+        entry: bash -c 'if [ -f pyproject.toml ]; then exec uv run mypy --strict; else echo "[skip] uv-mypy-strict - pyproject.toml absent (pre-scaffold; lands in PRD task 1-2)" >&2; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: uv-pytest
+        name: uv run pytest
+        entry: bash -c 'if [ -f pyproject.toml ]; then exec uv run pytest; else echo "[skip] uv-pytest - pyproject.toml absent (pre-scaffold; lands in PRD task 1-2)" >&2; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
