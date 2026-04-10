@@ -46,11 +46,13 @@ If this document conflicts with the PRD, the PRD wins.
 
 ---
 
-## Phase 1: Scaffolding and Tooling
+## ~~Phase 1: Scaffolding and Tooling~~
+
+> **Phase complete 2026-04-10.** All four tasks resolved; see individual task headings and the Phase 1 Exit Gate for details.
 
 **Goal:** Create a reproducible repo foundation with the correct package layout, lockfile discipline, test import behavior, and hardened CI.
 
-### Task 1-1: Create Repo Scaffold and Ignore Policy
+### ~~Task 1-1: Create Repo Scaffold and Ignore Policy~~
 
 #### Objective
 
@@ -102,7 +104,7 @@ Create the package tree, test tree, script directories, and ignore rules require
 
 - Claude Code
 
-### Task 1-2: Configure `pyproject.toml` and Tooling
+### ~~Task 1-2: Configure `pyproject.toml` and Tooling~~
 
 #### Objective
 
@@ -145,7 +147,7 @@ Create a complete `pyproject.toml` that defines package metadata, the console en
 
 - Claude Code
 
-### Task 1-3: Generate and Commit the Lockfile
+### ~~Task 1-3: Generate and Commit the Lockfile~~
 
 #### Objective
 
@@ -176,7 +178,9 @@ Create the initial lockfile and verify the editable local environment.
 
 - Human engineer
 
-### Task 1-4: Configure Hardened GitHub Actions CI
+### ~~Task 1-4: Configure Hardened GitHub Actions CI~~
+
+> **Resolved 2026-04-10 (PR #4).** The literal deliverable `.github/workflows/ci.yml` was not created. Instead, the CI workflow set landed ahead of Phase 1 in commit `dc0a314` as eleven separate workflows (`tests`, `lint`, `format`, `types`, `build`, `cli-smoke`, `determinism`, `import-smoke`, `policy-guard`, `syntax`, `ci-meta`) plus support workflows under `.github/workflows/`. Each workflow uses `uv sync --locked`, `contents: read` workflow-level permissions with narrow per-job elevations, `timeout-minutes` on every job, and SHA-pinned remote action references with trailing `# vX.Y.Z` comments. `tests` and `cli-smoke` run on both `ubuntu-latest` and `macos-latest`; the remaining gates run on `ubuntu-latest` only. All six acceptance criteria below are satisfied by the existing set. The original task body is preserved for historical context.
 
 #### Objective
 
@@ -222,7 +226,9 @@ Create a CI workflow that validates the repo on macOS and Linux with locked depe
 
 - Human engineer + Claude Code
 
-### Phase 1 Exit Gate
+### ~~Phase 1 Exit Gate~~
+
+> **Closed 2026-04-10 (PR #4 merged).** All four bullets satisfied: `src/` layout landed in PR #1; `uv.lock` committed in PR #4; tests import via the installed package path (verified by `tests/test_smoke.py`); CI green on both `ubuntu-latest` and `macos-latest`.
 
 - Repo structure exists under `src/`.
 - Lockfile is committed.
@@ -1076,10 +1082,10 @@ Add the informational-only reference comparison command without changing launch-
 
 ## Recommended Execution Order
 
-1. `1-1` Repo scaffold and ignore policy
-2. `1-2` `pyproject.toml` and tool configuration
-3. `1-3` Lockfile and editable install
-4. `1-4` Hardened CI
+1. ~~`1-1` Repo scaffold and ignore policy~~
+2. ~~`1-2` `pyproject.toml` and tool configuration~~
+3. ~~`1-3` Lockfile and editable install~~
+4. ~~`1-4` Hardened CI~~
 5. `2-1` Shared constants and contracts
 6. `2-2` Deterministic fixtures
 7. `2-3` Pre-tokenizer implementation
@@ -1109,8 +1115,8 @@ Add the informational-only reference comparison command without changing launch-
 
 ## Human-Required Tasks
 
-- `1-3` Generate the initial lockfile in the local environment.
-- `1-4` Verify the GitHub Actions workflow on the remote repository.
+- ~~`1-3` Generate the initial lockfile in the local environment.~~
+- ~~`1-4` Verify the GitHub Actions workflow on the remote repository.~~
 - `4-4` Run and record benchmark results on the benchmark machine.
 - `4-5` Validate README commands on a clean machine.
 - `4-6` Perform the final clean-clone release gate.
