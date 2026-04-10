@@ -30,7 +30,7 @@ from pathlib import Path, PurePosixPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _ui import Violation, render_failure  # noqa: E402
+from _ui import Violation, render_failure
 
 _RULE = "forbid-generated-artifacts"
 _WHY = (
@@ -63,7 +63,7 @@ def _matches_anchored(path: str, pattern: str) -> bool:
         return False
     return all(
         fnmatch.fnmatchcase(segment, pattern_segment)
-        for segment, pattern_segment in zip(path_parts, pattern_parts)
+        for segment, pattern_segment in zip(path_parts, pattern_parts, strict=True)
     )
 
 

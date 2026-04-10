@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _ui import Violation, render_failure  # noqa: E402
+from _ui import Violation, render_failure
 
 _RULE = "require-commitall-approval"
 _WHY = (

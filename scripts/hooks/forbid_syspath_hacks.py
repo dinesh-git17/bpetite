@@ -42,7 +42,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _ui import Violation, render_failure  # noqa: E402
+from _ui import Violation, render_failure
 
 _RULE = "forbid-syspath-hacks"
 _WHY = (
@@ -104,18 +104,24 @@ class _Visitor(ast.NodeVisitor):
         if isinstance(node, ast.Name):
             return self._attr_imports.get(node.id) == ("sys", "path")
         # `sys.path` or `s.path` where `s` aliases `sys`
-        if isinstance(node, ast.Attribute) and node.attr == "path":
-            if isinstance(node.value, ast.Name):
-                return self._module_aliases.get(node.value.id) == "sys"
+        if (
+            isinstance(node, ast.Attribute)
+            and node.attr == "path"
+            and isinstance(node.value, ast.Name)
+        ):
+            return self._module_aliases.get(node.value.id) == "sys"
         return False
 
     def _resolves_to_os_environ(self, node: ast.AST) -> bool:
         """Return True if ``node`` is a reference to ``os.environ``."""
         if isinstance(node, ast.Name):
             return self._attr_imports.get(node.id) == ("os", "environ")
-        if isinstance(node, ast.Attribute) and node.attr == "environ":
-            if isinstance(node.value, ast.Name):
-                return self._module_aliases.get(node.value.id) == "os"
+        if (
+            isinstance(node, ast.Attribute)
+            and node.attr == "environ"
+            and isinstance(node.value, ast.Name)
+        ):
+            return self._module_aliases.get(node.value.id) == "os"
         return False
 
     def _is_pythonpath_subscript(self, node: ast.AST) -> bool:
