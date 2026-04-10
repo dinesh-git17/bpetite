@@ -382,7 +382,7 @@ Note: `mergeable_vocab_size` equals `len(merges) + 256`. In this example, 2 merg
 ## Acceptance Criteria
 
 - The package exists under `src/bpetite/` and public imports resolve from `bpetite`.
-- CI passes on `ubuntu-latest` and `macos-latest` with Python 3.12 for tests, lint, format-check, and strict typing.
+- CI passes on Python 3.12 for tests, lint, format-check, strict typing, packaging build, CLI smoke, determinism, and policy guards. The `tests` and `cli-smoke` gates execute on both `ubuntu-latest` and `macos-latest` because they exercise runtime code paths that can legitimately drift across operating systems. The `lint`, `format`, `type`, `build`, `determinism`, `policy-guard`, and `syntax` gates execute on `ubuntu-latest` only because their underlying tools (`ruff`, `mypy`, `uv build`, `py_compile`, AST-based policy scripts) are OS-invariant by construction and a second OS run would consume Actions minutes without catching additional regressions.
 - Training on the same corpus twice produces byte-identical tokenizer artifacts.
 - The trainer never merges across pre-tokenizer chunk boundaries.
 - `decode(encode(text)) == text` passes for fixtures covering empty string, whitespace-only, ASCII, emoji, CJK, Arabic, mixed punctuation, and text containing `<|endoftext|>`.

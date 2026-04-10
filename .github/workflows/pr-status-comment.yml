@@ -1,0 +1,137 @@
+name: pr-status-comment
+
+# Non-blocking. Maintains a single sticky PR comment summarising the
+# outcome of every required workflow. Triggered via `workflow_run` so it
+# receives write-capable GITHUB_TOKEN in the base-repo context without
+# touching PR-authored code.
+#
+# Security model
+# --------------
+# - Uses `workflow_run` on the completion of each tracked workflow. This
+#   gives the job a base-repo write-capable token.
+# - NEVER checks out the PR branch. The checkout step is pinned to the
+#   repository default branch so the helper script executed here is always
+#   the base-branch copy, never PR-authored code. This is the mitigation
+#   for the canonical "pwn request" pattern described by GitHub Security
+#   Lab (https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/).
+# - PR metadata is derived from `github.event.workflow_run.pull_requests`
+#   (populated for same-repo PRs) with a fallback lookup by head SHA via
+#   the REST API for fork PRs.
+# - If the trigger was not a pull_request (e.g. push to main), the job
+#   exits successfully without posting anything.
+
+on:
+  # This workflows list MUST stay in lockstep with
+  # .github/workflows/tracked-required.json. The two copies exist because
+  # GitHub parses `workflow_run.workflows` at workflow-load time from a
+  # static YAML literal and cannot read it from JSON. The `ci-meta`
+  # workflow's drift check fails the PR if the two lists diverge.
+  workflow_run:
+    workflows:
+      - tests
+      - lint
+      - syntax
+      - format
+      - types
+      - build
+      - cli-smoke
+      - determinism
+      - policy-guard
+      - ci-meta
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: pr-status-comment-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    name: update sticky comment
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event.workflow_run.event == 'pull_request'
+    steps:
+      - name: Checkout default branch only
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # CRITICAL: never pass the PR head_branch here. This workflow runs
+          # with a write-capable token; checking out PR-authored code would
+          # allow an attacker to rewrite the helper script below and
+          # exfiltrate the token. Always use the repository default branch
+          # so only trusted base-branch code runs.
+          ref: ${{ github.event.repository.default_branch }}
+          repository: ${{ github.repository }}
+          persist-credentials: false
+
+      - name: Resolve PR number
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+          PR_JSON: ${{ toJSON(github.event.workflow_run.pull_requests) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Prefer the PR list embedded in the workflow_run event payload.
+          PR_NUMBER="$(
+            python - <<'PY'
+          import json, os
+          payload = json.loads(os.environ.get("PR_JSON", "[]") or "[]")
+          if isinstance(payload, list) and payload:
+              entry = payload[0]
+              if isinstance(entry, dict) and isinstance(entry.get("number"), int):
+                  print(entry["number"])
+          PY
+          )"
+
+          if [[ -z "${PR_NUMBER}" ]]; then
+            # Fork PR fallback: look up the PR by head sha.
+            PR_NUMBER="$(
+              gh api \
+                -H 'Accept: application/vnd.github+json' \
+                "/repos/${REPO}/commits/${HEAD_SHA}/pulls" \
+                --jq '.[0].number // empty'
+            )"
+          fi
+
+          if [[ -z "${PR_NUMBER}" ]]; then
+            echo "no PR associated with head_sha=${HEAD_SHA}; skipping"
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo "pr_number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "skip=false" >> "${GITHUB_OUTPUT}"
+
+      - name: Build comment body
+        if: steps.pr.outputs.skip != 'true'
+        id: body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/ci/build_status_comment.py > "${RUNNER_TEMP}/comment.md"
+          {
+            echo 'body<<COMMENT_EOF'
+            cat "${RUNNER_TEMP}/comment.md"
+            echo 'COMMENT_EOF'
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Upsert sticky PR comment
+        if: steps.pr.outputs.skip != 'true'
+        uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+        with:
+          header: bpetite-workflow-status
+          number: ${{ steps.pr.outputs.pr_number }}
+          message: ${{ steps.body.outputs.body }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

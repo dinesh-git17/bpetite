@@ -1,0 +1,39 @@
+# Dependabot configuration.
+#
+# The GitHub Actions ecosystem is enabled so that SHA-pinned action
+# references in .github/workflows/**.yml and .github/actions/**/action.yml
+# are automatically bumped when upstream publishes a new release. Every
+# bump arrives as a pull request with the release notes in the body, the
+# new SHA, and a matching `# vX.Y.Z` trailing comment.
+#
+# The pip ecosystem is intentionally NOT enabled here: `uv` owns the
+# dependency graph through `uv.lock` and Dependabot's pip support cannot
+# read the uv lockfile. Dependency upgrades for the Python runtime
+# dependency set are handled manually via `uv lock --upgrade`.
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - "/"
+      - "/.github/actions/detect-changes"
+      - "/.github/actions/setup-python-env"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    labels:
+      - automation/dependencies
+      - area/ci
+    groups:
+      actions-minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch

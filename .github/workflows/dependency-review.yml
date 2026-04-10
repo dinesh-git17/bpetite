@@ -1,0 +1,39 @@
+name: dependency-review
+
+# Non-blocking. Runs the first-party dependency-review action on dependency
+# manifest changes only. The action reads the GitHub dependency graph for
+# the PR and fails on newly introduced vulnerabilities at or above the
+# `fail-on-severity` threshold below. No license-policy gate is configured;
+# if license enforcement is added later, declare it explicitly with
+# `allow-licenses` / `deny-licenses` inputs. PR-only by design.
+
+on:
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: dependency-review-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: dependency-review-action
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

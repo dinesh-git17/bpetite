@@ -1,0 +1,224 @@
+name: ci-meta
+
+# Required merge gate for the CI control plane itself. Fires only on
+# changes under .github/**, .pre-commit-config.yaml, or scripts/ci/** and
+# validates the workflow set end-to-end:
+#
+#   1. Every YAML file under .github/ parses and passes yamllint.
+#   2. actionlint inspects every workflow for common authoring errors and
+#      shell-check'd run-step shells.
+#   3. The detect-changes composite action runs under the runner's system
+#      Python against a synthetic diff to prove it continues to function.
+#   4. Every SHA-pinned action reference carries a `# vX.Y.Z` trailing
+#      comment so Dependabot can track the pin.
+#
+# Unlike the other required workflows this one never no-ops: if a PR
+# touches the CI control plane, the gate must run the full check set.
+# Required workflows that do not touch the control plane simply never
+# trigger ci-meta because of the top-level paths filter.
+
+on:
+  pull_request:
+    paths:
+      - ".github/**"
+      - ".pre-commit-config.yaml"
+      - "scripts/ci/**"
+      - "scripts/hooks/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/**"
+      - ".pre-commit-config.yaml"
+      - "scripts/ci/**"
+      - "scripts/hooks/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-meta-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci-meta:
+    name: validate CI control plane
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Install yamllint and actionlint
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet yamllint==1.35.1
+          ACTIONLINT_VERSION=1.7.12
+          ACTIONLINT_SHA256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          curl -fsSL -o /tmp/actionlint.tgz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tgz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tgz -C /tmp actionlint
+          sudo install -m 0755 /tmp/actionlint /usr/local/bin/actionlint
+          actionlint -version
+          yamllint --version
+
+      - name: yamllint .github/
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/yamllint.yml <<'YAML'
+          extends: relaxed
+          rules:
+            line-length: disable
+            truthy: disable
+            comments-indentation: disable
+            document-start: disable
+          YAML
+          yamllint -c /tmp/yamllint.yml .github/
+
+      - name: actionlint .github/workflows/
+        shell: bash
+        run: actionlint -color
+
+      - name: Verify detect-changes composite action on a synthetic diff
+        shell: bash
+        env:
+          GITHUB_EVENT_NAME: pull_request
+          INPUT_GLOBS: |
+            src/bpetite/**
+            tests/**
+            .github/**
+        run: |
+          set -euo pipefail
+          # Build a tiny throwaway git history in a scratch directory and
+          # run the detect_changes.py helper against it. This proves the
+          # Python classifier still produces the expected outputs on
+          # whatever runner image we land on.
+          WORKDIR="$(mktemp -d)"
+          cp scripts/ci/detect_changes.py "${WORKDIR}/detect_changes.py"
+          (
+            cd "${WORKDIR}"
+            git init -q
+            git -c user.email=ci@bpetite -c user.name=ci commit -q --allow-empty -m base
+            BASE_SHA="$(git rev-parse HEAD)"
+            mkdir -p src/bpetite
+            printf 'x\n' > src/bpetite/_probe.py
+            git add .
+            git -c user.email=ci@bpetite -c user.name=ci commit -q -m probe
+            HEAD_SHA="$(git rev-parse HEAD)"
+            : > out.txt
+            PR_BASE_SHA="${BASE_SHA}" \
+              PR_HEAD_SHA="${HEAD_SHA}" \
+              GITHUB_OUTPUT="${PWD}/out.txt" \
+              python3 detect_changes.py
+            grep -q '^relevant=true$' out.txt
+            grep -q '^changed_count=1$' out.txt
+          )
+          echo "detect-changes smoke OK"
+
+      - name: Verify tracked-required.json matches pr-status-comment workflows list
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The pr-status-comment.yml trigger must list exactly the display
+          # names from tracked-required.json. Drift between the two is a
+          # silent bug: a newly added required workflow will never update
+          # the sticky comment unless both sides are updated together.
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          tracked = json.loads(
+              pathlib.Path(".github/workflows/tracked-required.json").read_text()
+          )["tracked"]
+          expected = sorted(entry["display"] for entry in tracked)
+
+          yaml_text = pathlib.Path(
+              ".github/workflows/pr-status-comment.yml"
+          ).read_text()
+          # Extract the block under `workflow_run.workflows:`. This is a
+          # deliberately narrow parser: we do not pull in PyYAML just to
+          # read one list. A safe YAML-list-of-strings regex is enough.
+          match = re.search(
+              r"workflow_run:\s*\n\s*workflows:\s*\n((?:\s*-\s*[A-Za-z0-9_\-]+\s*\n)+)",
+              yaml_text,
+          )
+          if match is None:
+              sys.stderr.write(
+                  "pr-status-comment.yml: could not locate workflow_run.workflows block\n"
+              )
+              sys.exit(1)
+          declared = sorted(
+              line.strip().lstrip("- ").strip() for line in match.group(1).splitlines()
+              if line.strip()
+          )
+
+          if declared != expected:
+              sys.stderr.write(
+                  "drift between tracked-required.json and pr-status-comment.yml\n"
+              )
+              sys.stderr.write(f"  tracked-required.json : {expected}\n")
+              sys.stderr.write(f"  pr-status-comment.yml : {declared}\n")
+              sys.exit(1)
+          print("tracked-required.json and pr-status-comment.yml are consistent")
+          PY
+
+      - name: Verify every remote action reference is SHA-pinned
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Policy: every `uses: owner/repo@ref` that is not a local action
+          # must reference a 40-character commit SHA and carry a trailing
+          # `# vX.Y.Z` comment that names the upstream release so Dependabot
+          # can bump it. Local actions (`./.github/actions/...`) are exempt.
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          sha_re = re.compile(
+              r"uses:\s+([A-Za-z0-9_.\-/]+)@([A-Za-z0-9_.\-]+)(\s*#.*)?"
+          )
+          failures: list[str] = []
+          for path in sorted(pathlib.Path(".github").rglob("*.yml")):
+              for lineno, line in enumerate(
+                  path.read_text(encoding="utf-8").splitlines(), start=1
+              ):
+                  stripped = line.lstrip()
+                  if not stripped.startswith("- uses:") and not stripped.startswith(
+                      "uses:"
+                  ):
+                      continue
+                  match = sha_re.search(line)
+                  if not match:
+                      continue
+                  target, ref, trailing = match.groups()
+                  if target.startswith("./"):
+                      continue
+                  if len(ref) != 40 or not re.fullmatch(r"[0-9a-f]{40}", ref):
+                      failures.append(
+                          f"{path}:{lineno}: {target} must be pinned to a 40-char SHA, got {ref!r}"
+                      )
+                      continue
+                  if not trailing or not re.search(r"#\s*v?\d", trailing):
+                      failures.append(
+                          f"{path}:{lineno}: {target} SHA pin must carry a trailing `# vX.Y.Z` comment"
+                      )
+          if failures:
+              for line in failures:
+                  print(line, file=sys.stderr)
+              sys.exit(1)
+          print("all remote action references SHA-pinned")
+          PY

@@ -1,0 +1,52 @@
+name: Detect Changes
+description: >
+  Classify changed files in a pull request against a newline-delimited glob
+  list. Outputs a single boolean that tells a required workflow whether its
+  heavy job should run or no-op successfully. On non-pull_request events
+  (push to main, schedule, workflow_dispatch) the output is always true so
+  main-branch sweeps and manual runs never no-op.
+
+# Design notes
+# ------------
+# Required status checks cannot rely on top-level paths/paths-ignore filters
+# because a workflow that is skipped at the trigger level never reports a
+# check and therefore blocks merge indefinitely (GitHub docs: "Troubleshooting
+# required status checks"). The supported pattern is to always trigger on
+# pull_request and compute applicability inside the job using a lightweight
+# step, then gate subsequent steps on its output.
+#
+# The classification logic lives in `scripts/ci/detect_changes.py` so it runs
+# under the runner's system Python (available on every GitHub-hosted image)
+# rather than relying on bash-4-only features like `mapfile` and `shopt -s
+# globstar`. macOS runners ship Bash 3.2, so the previous bash implementation
+# was not portable.
+
+inputs:
+  globs:
+    description: >
+      Newline-delimited list of glob patterns. A changed file matching any
+      pattern marks the workflow as relevant.
+    required: true
+
+outputs:
+  relevant:
+    description: "'true' when any changed file matches any glob, otherwise 'false'."
+    value: ${{ steps.classify.outputs.relevant }}
+  changed_count:
+    description: "Total count of files changed in the diff range."
+    value: ${{ steps.classify.outputs.changed_count }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify changed files
+      id: classify
+      shell: bash
+      env:
+        INPUT_GLOBS: ${{ inputs.globs }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      working-directory: ${{ github.workspace }}
+      run: |
+        python3 scripts/ci/detect_changes.py

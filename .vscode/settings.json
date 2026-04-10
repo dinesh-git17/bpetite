@@ -1,0 +1,9 @@
+{
+  "//": "Workspace-level VS Code settings for the bpetite repo. Keep this file minimal and intentional: every entry should fix a concrete false positive or enforce a repo convention, not reflect personal taste.",
+
+  "//shellcheck": "The shellcheck extension classifies files without extensions as shell scripts when it cannot otherwise identify them. .github/CODEOWNERS is a GitHub-specific format (not shell), so shellcheck misreads path/owner lines as commands and raises SC2148/SC2287/SC2211. Suppressing the extension on this one path removes the noise without masking real shell bugs elsewhere.",
+  "shellcheck.ignorePatterns": {
+    "**/.github/CODEOWNERS": true,
+    "**/CODEOWNERS": true
+  }
+}

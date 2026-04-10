@@ -192,15 +192,15 @@ Create a CI workflow that validates the repo on macOS and Linux with locked depe
 
 #### Implementation Notes
 
-- Use GitHub Actions matrix builds for:
-  - `ubuntu-latest`
-  - `macos-latest`
-  - Python `3.12`
+- Use GitHub Actions matrix builds for Python `3.12`.
+- Run `tests` and `cli-smoke` on both `ubuntu-latest` and `macos-latest` (they exercise runtime paths that can drift across operating systems).
+- Run `lint`, `format`, `type`, `build`, `determinism`, `policy-guard`, and `syntax` on `ubuntu-latest` only. Their underlying tools (`ruff`, `mypy`, `uv build`, `py_compile`, AST-based policy scripts) are OS-invariant by construction, so a second OS run would consume Actions minutes without catching additional regressions.
 - Use the official `astral-sh/setup-uv` action.
-- Use pinned action references rather than floating tags where repository policy allows it.
-- Set minimal workflow permissions:
+- Pin every remote action reference by 40-character commit SHA with a trailing `# vX.Y.Z` release comment. Mutable major tags (`@v4`) are forbidden for remote actions because an upstream move can silently alter CI behavior. Local composite actions under `./.github/actions/**` are exempt. Dependabot manages the SHA bumps.
+- Set minimal workflow permissions at the workflow level:
   - `contents: read`
-- Add `timeout-minutes`.
+- Elevate permissions only on the specific jobs that need them (`pull-requests: write` for comment automation, `security-events: write` for CodeQL, `issues: write` for label sync).
+- Add `timeout-minutes` to every job.
 - Use locked dependency sync in CI:
   - `uv sync --locked`
 - Run the exact PRD quality-gate commands:
@@ -212,10 +212,11 @@ Create a CI workflow that validates the repo on macOS and Linux with locked depe
 #### Acceptance Criteria
 
 1. The workflow runs on push and pull request.
-2. The workflow runs on both supported OS targets.
+2. `tests` and `cli-smoke` execute on both `ubuntu-latest` and `macos-latest`; the remaining required gates execute on `ubuntu-latest` only.
 3. The workflow uses locked dependency installation.
 4. The workflow uses least-privilege permissions.
-5. The workflow is green on the scaffold commit.
+5. Every remote action reference is pinned by 40-character commit SHA with a trailing `# vX.Y.Z` comment.
+6. The workflow is green on the scaffold commit.
 
 #### Owner
 

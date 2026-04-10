@@ -1,0 +1,47 @@
+# Code owners for bpetite.
+#
+# GitHub checks this file when a pull request changes files matching any
+# pattern below. The listed owner is automatically requested as a reviewer
+# and, when branch protection's "Require review from Code Owners" rule is
+# enabled, their approval becomes mandatory before merge.
+#
+# Patterns are matched top-to-bottom with later matches overriding earlier
+# ones (same semantics as .gitignore). Directory patterns must end with a
+# trailing slash or `**` to match recursively.
+#
+# The owner list is intentionally narrow today. Only Dinesh owns the repo.
+# Widen this file when additional maintainers join the project.
+
+# ---------------------------------------------------------------
+# Default owner for anything not covered by a more specific rule.
+# ---------------------------------------------------------------
+*                           @dinesh-git17
+
+# ---------------------------------------------------------------
+# CI / CD control plane.
+# GitHub's secure-use guidance recommends CODEOWNERS coverage for
+# workflow and composite-action changes so CI/CD control-plane
+# modifications cannot merge without an explicit extra-review pass.
+# ---------------------------------------------------------------
+/.github/                   @dinesh-git17
+/.github/workflows/         @dinesh-git17
+/.github/actions/           @dinesh-git17
+/.github/CODEOWNERS         @dinesh-git17
+/.github/dependabot.yml     @dinesh-git17
+/.github/labels.yml         @dinesh-git17
+/.github/labeler.yml        @dinesh-git17
+
+# ---------------------------------------------------------------
+# Repo-local hooks and CI helper scripts.
+# ---------------------------------------------------------------
+/scripts/hooks/             @dinesh-git17
+/scripts/ci/                @dinesh-git17
+/.pre-commit-config.yaml    @dinesh-git17
+
+# ---------------------------------------------------------------
+# Governance documents and PRD.
+# Changes to the product contract must be explicitly approved.
+# ---------------------------------------------------------------
+/CLAUDE.md                  @dinesh-git17
+/docs/bpetite-prd-v2.md     @dinesh-git17
+/docs/bpetite-task-list.md  @dinesh-git17

@@ -1,0 +1,130 @@
+name: policy-guard
+
+# Required merge gate. Invokes the repo-local AST guards under
+# `scripts/hooks/` on every tracked Python file. Local pre-commit runs these
+# against staged files; CI runs them against the full repository so a
+# bypassed pre-commit can't slip through. The guards are pure stdlib Python
+# and need no dependencies.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: policy-guard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  policy-guard:
+    name: repo-local guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Detect relevant changes
+        id: detect
+        uses: ./.github/actions/detect-changes
+        with:
+          globs: |
+            src/**
+            tests/**
+            scripts/**
+            pyproject.toml
+            uv.lock
+            .github/workflows/**
+
+      - name: No-op (no relevant changes)
+        if: steps.detect.outputs.relevant != 'true'
+        shell: bash
+        run: echo "No relevant changes for policy-guard.yml; reporting success."
+
+      - name: Setup Python
+        if: steps.detect.outputs.relevant == 'true'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: forbid-tests-init
+        if: steps.detect.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f tests/__init__.py ]]; then
+            scripts/hooks/forbid_tests_init.py tests/__init__.py
+            exit 1
+          fi
+
+      - name: forbid-syspath-hacks
+        if: steps.detect.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Scope mirrors the pre-commit config: src/, tests/, scripts/
+          # except scripts/hooks/ (which legitimately uses sys.path to load
+          # the sibling `_ui` helper).
+          mapfile -t FILES < <(
+            find src tests scripts -type f -name '*.py' \
+              ! -path 'scripts/hooks/*'
+          )
+          if [[ "${#FILES[@]}" -gt 0 ]]; then
+            scripts/hooks/forbid_syspath_hacks.py "${FILES[@]}"
+          fi
+
+      - name: forbid-generated-artifacts
+        if: steps.detect.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t FILES < <(git ls-files)
+          if [[ "${#FILES[@]}" -gt 0 ]]; then
+            scripts/hooks/forbid_generated_artifacts.py "${FILES[@]}"
+          fi
+
+      - name: forbid-core-networking
+        if: steps.detect.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t FILES < <(find src/bpetite -type f -name '*.py')
+          if [[ "${#FILES[@]}" -gt 0 ]]; then
+            scripts/hooks/forbid_core_networking.py "${FILES[@]}"
+          fi
+
+      - name: forbid-core-normalization
+        if: steps.detect.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILES=(
+            src/bpetite/_pretokenizer.py
+            src/bpetite/_trainer.py
+            src/bpetite/_encoder.py
+            src/bpetite/_decoder.py
+          )
+          EXISTING=()
+          for f in "${FILES[@]}"; do
+            [[ -f "${f}" ]] && EXISTING+=("${f}")
+          done
+          if [[ "${#EXISTING[@]}" -gt 0 ]]; then
+            scripts/hooks/forbid_core_normalization.py "${EXISTING[@]}"
+          fi
+
+      - name: forbid-stdlib-re-in-tokenizer
+        if: steps.detect.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t FILES < <(find src/bpetite -type f -name '*.py')
+          if [[ "${#FILES[@]}" -gt 0 ]]; then
+            scripts/hooks/forbid_stdlib_re.py "${FILES[@]}"
+          fi

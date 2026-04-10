@@ -1,6 +1,6 @@
 ---
 name: commitall
-description: Git commit approval workflow for repos using the sentinel-based commit guard. Use whenever the user runs `/commitall`, asks to commit changes, says "let's commit", "commit everything", "ship this", "ready to commit", or any similar intent. The skill audits the working tree, drafts a Conventional Commits message, and hands off to the interactive scripts/commitall.sh which the user runs themselves. Never attempt a raw `git commit`; always route through this workflow.
+description: Git commit approval workflow for repos using the sentinel-based commit guard. Use whenever the user runs `/commitall`, asks to commit changes, says "let's commit", "commit everything", "ship this", "ready to commit", or any similar intent. The skill first reconciles the project's auto-memory store against reality (Phase 0), then audits the working tree, drafts a Conventional Commits message, and hands off to the interactive scripts/commitall.sh which the user runs themselves. Never attempt a raw `git commit`; always route through this workflow.
 ---
 
 # /commitall — Commit Approval Workflow
@@ -23,7 +23,111 @@ the script themselves in their own terminal.
 
 ## Flow
 
-Every invocation runs all four phases in order. Do not skip phases.
+Every invocation runs all five phases in order. Do not skip phases. Phase 0
+runs before any other work so future Claude instances resuming this project
+inherit an up-to-date picture of intent and state — not just the diff.
+
+### Phase 0 — Memory Hygiene
+
+**Goal:** reconcile the project's auto-memory store with reality before
+touching the commit workflow. A stale memory is worse than no memory; a
+missing memory loses context that the next session will have to rebuild
+from scratch. This phase fixes both.
+
+**Applicability:** only run Phase 0 if the current session has an auto-memory
+system configured (described in the session system prompt, typically rooted
+at `~/.claude/projects/<project-slug>/memory/` with a `MEMORY.md` index).
+If no such system exists, print `memory: unavailable (skipped)` and proceed
+to Phase 1. Do not create the directory yourself.
+
+**Steps:**
+
+1. **Read the index.** Load `MEMORY.md` in full. It is short by design; do
+   not summarize or truncate. Note every entry, its title, and its
+   one-line hook.
+2. **Read each referenced memory file.** Every entry in `MEMORY.md` points
+   to a sibling `.md` file with frontmatter (`name`, `description`, `type`).
+   Load all of them. If a pointer is broken (file missing), queue the index
+   line for removal.
+3. **Reconcile against current reality.** For each memory, ask:
+   - Does it reference a path, function, or flag that no longer exists?
+     Verify with `Read`/`Grep`/`Glob` before deciding — a rename is not the
+     same as a deletion.
+   - Is it a "next step" or "pending" note whose work is now complete?
+     (E.g. "planning to add CI" after CI has landed.)
+   - Is it contradicted by a more recent decision captured earlier in this
+     same session?
+   - Is it a stale snapshot (activity log, inventory) whose freshness
+     mattered at the time but no longer does?
+   - Is it duplicated by `CLAUDE.md`, the PRD, the task list, or something
+     derivable from `git log`? If so, it should not have been saved at
+     all — remove it.
+     Any **yes** means the memory is stale. **Update** it in place if only a
+     detail is wrong; **delete** the whole file and its index line if the
+     entire premise is gone.
+4. **Capture new memory from the current session.** Walk the conversation
+   from the start and extract anything that:
+   - Is **not** already in `CLAUDE.md`, the PRD, the task list, or the
+     current repo state.
+   - Will be useful to a **future** Claude instance with no conversation
+     history.
+   - Fits one of the four auto-memory types:
+     - **project** — design decisions, landing-order calls, deferred
+       work with the reason for deferral, stakeholder asks, branch-
+       protection gates not yet enabled, review verdicts, intentional
+       PRD amendments. Use the required `**Why:**` and `**How to
+apply:**` structure from the memory spec.
+     - **feedback** — validated judgment calls from the user ("yes that
+       was the right call"), corrections ("stop doing X"), or preferences
+       discovered in passing. Always include the why so edge-case
+       judgement is possible later.
+     - **reference** — external system pointers (Linear project names,
+       Grafana dashboards, Slack channels, doc links). Rare in this repo.
+     - **user** — role/preferences/knowledge. Only add if you learned
+       something **new** about Dinesh that isn't already captured.
+       Do not save: code patterns, file paths, commit history, debugging
+       recipes, or ephemeral task state. Those belong in the repo or the task
+       list, not in memory.
+5. **Write the deltas.** For each new or updated memory:
+   - Create/overwrite the memory file with the required frontmatter
+     (`name`, `description`, `type`) and a body that follows the
+     type-specific structure (`**Why:**` + `**How to apply:**` for
+     project/feedback types).
+   - Update `MEMORY.md` with a single-line index entry: `- [Title](file.md)
+— one-line hook`. Keep the index under 200 lines; truncation is
+     silent above that bound.
+   - Never write memory body content directly into `MEMORY.md`; it is an
+     index, not a memory.
+6. **Delete stale files.** For each memory queued for removal, delete the
+   file and strike its line from `MEMORY.md`.
+7. **Report.** Print a compact block before starting Phase 1:
+
+   ```
+   memory: <N> kept, <N> updated, <N> added, <N> removed
+     + added:   <title>
+     ~ updated: <title>
+     - removed: <title> (<reason>)
+   ```
+
+   If nothing changed, print `memory: up to date (N entries)`. This block
+   is part of the Phase 0 output; it does not replace the Phase 1 audit.
+
+**Hard rules:**
+
+- **Never skip Phase 0.** The user added it specifically so every commit
+  is a memory checkpoint. If it is genuinely impossible (no memory system
+  configured), say so explicitly in the skip notice.
+- **Never write memory content that duplicates `CLAUDE.md`, the PRD, the
+  task list, or anything derivable from `git log`.** Memory is for what the
+  repo cannot already tell you.
+- **Never save negative judgements about the user.** Memory exists to help
+  future sessions be more useful, not to keep a ledger.
+- **Never use memory to stash work-in-progress from the current
+  conversation.** Task tracking and plans handle that; memory is only for
+  information that should survive across sessions.
+- **Verify before recommending from memory.** If a memory names a file or
+  function, check that it still exists before relying on it in later
+  phases. A memory is a claim about _the past_, not a live assertion.
 
 ### Phase 1 — Pre-flight Audit
 
@@ -94,7 +198,7 @@ Skip this phase entirely on `BLOCKED` verdict. On `READY` or `WARN`:
 Present a compact response with four sections in order:
 
 1. **Audit block** — verdict, bucketed change summary, any warnings.
-2. **Drafted message** — in a ```` ``` ```` code fence for copy-paste.
+2. **Drafted message** — in a ` ``` ` code fence for copy-paste.
 3. **Split suggestion** — only if applicable.
 4. **Next step** — literal instructions:
 
@@ -106,6 +210,7 @@ Present a compact response with four sections in order:
    > ```
    >
    > When the script prompts:
+   >
    > - `Commit message:` — paste the drafted line above.
    > - `Approve this commit? [y/N]` — type `y` and press Enter.
    >
@@ -139,10 +244,10 @@ script's stdout/stderr into the next turn automatically). Then:
 
 ## Verdict Taxonomy
 
-| Verdict   | Meaning                                                                         | Skill behaviour                                          |
-| --------- | ------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `READY`   | No red flags, no soft warnings. Clean for commit.                               | Draft message, hand off.                                 |
-| `WARN`    | No red flags but at least one soft warning.                                     | Draft message, hand off with warnings surfaced in audit. |
+| Verdict   | Meaning                                                                         | Skill behaviour                                                                                                                      |
+| --------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `READY`   | No red flags, no soft warnings. Clean for commit.                               | Draft message, hand off.                                                                                                             |
+| `WARN`    | No red flags but at least one soft warning.                                     | Draft message, hand off with warnings surfaced in audit.                                                                             |
 | `BLOCKED` | At least one red flag: oversized file, suspected secret, or guard-blocked path. | **Do not draft a message.** Surface the red flag and ask the user how to resolve. Only re-run the flow once the red flag is cleared. |
 
 ## Hard Rules

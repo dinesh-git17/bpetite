@@ -1,0 +1,66 @@
+# actions/labeler v5 configuration. Drives `.github/workflows/pr-labeler.yml`.
+# v5 replaced the flat v4 form with explicit match objects keyed by
+# `changed-files` matchers and (optionally) `base-branch` / `head-branch`
+# regex matchers. We use only `changed-files: any-glob-to-any-file` here so
+# that touching a file in any area always applies the corresponding label.
+
+area/core:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/bpetite/**
+
+area/cli:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/bpetite/_cli.py
+          - tests/test_cli.py
+
+area/tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tests/**
+
+area/docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - README.md
+          - docs/**
+          - "**/*.md"
+
+area/ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - scripts/hooks/**
+          - scripts/ci/**
+          - .pre-commit-config.yaml
+
+automation/dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - pyproject.toml
+          - uv.lock
+
+type/feat:
+  - head-branch:
+      - "^feat/"
+
+type/fix:
+  - head-branch:
+      - "^fix/"
+
+type/chore:
+  - head-branch:
+      - "^chore/"
+
+type/refactor:
+  - head-branch:
+      - "^refactor/"
+
+type/docs:
+  - head-branch:
+      - "^docs/"
+
+type/test:
+  - head-branch:
+      - "^test/"

@@ -1,0 +1,47 @@
+name: Setup Python and uv
+description: >
+  Pin uv, install Python 3.12, and run `uv sync --locked` so the rest of the
+  workflow has a reproducible editable environment. Centralising this step
+  keeps action versions and sync flags identical across every workflow.
+
+# Design notes
+# ------------
+# - astral-sh/setup-uv handles Python installation via `uv python install`
+#   when python-version is supplied, so actions/setup-python is not needed.
+# - `--locked` asserts the committed uv.lock is up to date and fails the job
+#   if it would need regeneration. CI must never regenerate the lockfile.
+# - `enable-cache` caches the uv wheel cache keyed on uv.lock, which cuts
+#   wall time on repeat runs without sacrificing determinism.
+# - The explicit `uv cache prune --ci` step after `uv sync --locked` strips
+#   pre-built wheels from the cache that would never be reused on a
+#   subsequent locked sync. setup-uv saves the cache at the end of the job;
+#   pruning first caps cache size and reduces long-term storage churn
+#   across the nine required workflows that share this composite action.
+
+inputs:
+  python-version:
+    description: Python interpreter version managed by uv.
+    required: false
+    default: "3.12"
+  uv-version:
+    description: Pinned uv release tag.
+    required: false
+    default: "0.11.6"
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+      with:
+        version: ${{ inputs.uv-version }}
+        enable-cache: true
+        python-version: ${{ inputs.python-version }}
+
+    - name: Sync locked dependencies
+      shell: bash
+      run: uv sync --locked
+
+    - name: Prune uv cache before save
+      shell: bash
+      run: uv cache prune --ci

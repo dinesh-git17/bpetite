@@ -1,0 +1,15 @@
+{
+  "$comment": "Single source of truth for the list of required merge-gate workflows tracked by pr-status-comment.yml. Both the workflow itself (via jq) and scripts/ci/build_status_comment.py (via json.load) read from this file. Keep the order stable so the rendered status table is deterministic across runs.",
+  "tracked": [
+    { "display": "tests", "workflow_file": "tests.yml" },
+    { "display": "lint", "workflow_file": "lint.yml" },
+    { "display": "syntax", "workflow_file": "syntax.yml" },
+    { "display": "format", "workflow_file": "format.yml" },
+    { "display": "types", "workflow_file": "types.yml" },
+    { "display": "build", "workflow_file": "build.yml" },
+    { "display": "cli-smoke", "workflow_file": "cli-smoke.yml" },
+    { "display": "determinism", "workflow_file": "determinism.yml" },
+    { "display": "policy-guard", "workflow_file": "policy-guard.yml" },
+    { "display": "ci-meta", "workflow_file": "ci-meta.yml" }
+  ]
+}

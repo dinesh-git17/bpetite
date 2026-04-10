@@ -1,0 +1,71 @@
+name: syntax
+
+# Required merge gate. Compiles every .py file under src/, tests/ and
+# scripts/ to bytecode using the stdlib compileall module. This is a very
+# cheap sanity check that catches parse-level regressions before the heavier
+# quality gates run. It does not depend on the project's runtime
+# dependencies and so does not need `uv sync`.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: syntax-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  syntax:
+    name: py_compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Detect relevant changes
+        id: detect
+        uses: ./.github/actions/detect-changes
+        with:
+          globs: |
+            src/bpetite/**
+            tests/**
+            scripts/**
+
+      - name: No-op (no relevant changes)
+        if: steps.detect.outputs.relevant != 'true'
+        shell: bash
+        run: echo "No relevant changes for syntax.yml; reporting success."
+
+      - name: Setup Python
+        if: steps.detect.outputs.relevant == 'true'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Compile all Python sources
+        if: steps.detect.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only compile directories that actually exist. During pre-scaffold
+          # state (before Task 1-1 lands) src/ and tests/ are absent; the
+          # workflow still reports success because scripts/ exists and
+          # compiles cleanly.
+          TARGETS=()
+          for d in src tests scripts; do
+            [[ -d "${d}" ]] && TARGETS+=("${d}")
+          done
+          if [[ "${#TARGETS[@]}" -eq 0 ]]; then
+            echo "no Python source directories present yet; nothing to compile."
+            exit 0
+          fi
+          python -m compileall -q -f "${TARGETS[@]}"

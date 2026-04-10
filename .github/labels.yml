@@ -1,0 +1,115 @@
+# Canonical bpetite label taxonomy. Managed by `.github/workflows/labels-sync.yml`
+# through `EndBug/label-sync`. Changes land here only; never edit labels in
+# the GitHub UI.
+#
+# Taxonomy design
+# ---------------
+# - type/*         conventional-commit families (what kind of change)
+# - area/*         subsystem / scope of the change
+# - state/*        PR lifecycle state (draft, ready, blocked, merged)
+# - risk/*         reviewer-visible blast radius signal
+# - automation/*   PR/issue automation provenance signal
+#
+# Color discipline
+# ----------------
+# Each family has a single hue and shades by severity/meaning so a reviewer
+# can tell families apart at a glance.
+#
+#   type/*         blue family   (#0366D6 base)
+#   area/*         green family  (#0E8A16 base)
+#   state/*        amber family  (#FBCA04 base)
+#   risk/*         red family    (#D93F0B base)
+#   automation/*   gray family   (#BFBFBF base)
+
+# ---------- type/* : conventional-commit families ----------
+- name: type/feat
+  color: "0366D6"
+  description: New end-user capability.
+
+- name: type/fix
+  color: "0E4C92"
+  description: Bug fix with behavioural impact.
+
+- name: type/refactor
+  color: "1D76DB"
+  description: Structural change without behavioural impact.
+
+- name: type/chore
+  color: "5591E3"
+  description: Build, tooling, or config maintenance.
+
+- name: type/docs
+  color: "8CB8F0"
+  description: Documentation-only change.
+
+- name: type/test
+  color: "A5C9F5"
+  description: Test-only change.
+
+# ---------- area/* : subsystem scope ----------
+- name: area/core
+  color: "0E8A16"
+  description: Changes to src/bpetite core library code.
+
+- name: area/cli
+  color: "196C2E"
+  description: Changes to the bpetite CLI entry point.
+
+- name: area/tests
+  color: "63C466"
+  description: Changes to tests/ including fixtures.
+
+- name: area/docs
+  color: "9BE49D"
+  description: Changes to docs/ or README.md.
+
+- name: area/ci
+  color: "C9F0CA"
+  description: Changes to .github/ workflows, actions, or repo automation.
+
+# ---------- state/* : PR lifecycle ----------
+- name: state/draft
+  color: "FFF5B1"
+  description: PR is in draft; reviewers should wait.
+
+- name: state/ready-for-review
+  color: "FBCA04"
+  description: PR is out of draft and ready for review.
+
+- name: state/blocked
+  color: "E8A800"
+  description: PR is blocked on an external decision or dependency.
+
+- name: state/merged
+  color: "B08800"
+  description: PR has been merged.
+
+# ---------- risk/* : reviewer blast radius signal ----------
+- name: risk/low
+  color: "F9D0C4"
+  description: Low blast radius; trivial review.
+
+- name: risk/medium
+  color: "E99695"
+  description: Medium blast radius; normal review rigour.
+
+- name: risk/high
+  color: "D93F0B"
+  description: High blast radius; require deep review.
+
+- name: risk/release-gate
+  color: "B60205"
+  description: Touches merge gate or release pipeline; treat as P0.
+
+# ---------- automation/* : provenance ----------
+- name: automation/bot
+  color: "EEEEEE"
+  description: Opened by a bot.
+
+- name: automation/managed
+  color: "BFBFBF"
+  description: Automated, managed by repo tooling (labeler, dependabot, etc.).
+
+- name: automation/dependencies
+  color: "8F8F8F"
+  description: Dependency upgrade.

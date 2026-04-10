@@ -1,0 +1,66 @@
+name: pr-labeler
+
+# Non-blocking. Applies area/type labels to PRs based on changed-file globs
+# and head-branch regex. Uses `pull_request_target` so that labeling works
+# for PRs opened from forks, but this workflow never checks out or executes
+# any PR-authored code — it only invokes the first-party `actions/labeler`
+# action with the committed `.github/labeler.yml` from the base branch.
+#
+# Security note: using `pull_request_target` here is the officially
+# supported pattern for PR triage automation. Because the workflow never
+# runs PR code, it is not vulnerable to pwn-request-style compromise.
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - converted_to_draft
+      - edited
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-labeler-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  label-by-area:
+    name: actions/labeler
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Apply area and type labels
+        uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # v6.0.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+  label-by-state:
+    name: state labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Reconcile state/draft vs state/ready-for-review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${IS_DRAFT}" == "true" ]]; then
+            add="state/draft"
+            remove="state/ready-for-review"
+          else
+            add="state/ready-for-review"
+            remove="state/draft"
+          fi
+          gh pr edit "${PR_NUMBER}" --repo "${REPO}" --add-label "${add}" || true
+          gh pr edit "${PR_NUMBER}" --repo "${REPO}" --remove-label "${remove}" || true

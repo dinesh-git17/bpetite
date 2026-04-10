@@ -1,0 +1,72 @@
+name: format
+
+# Required merge gate. Runs `ruff format --check` against the whole
+# repository. Drift from the canonical format is a merge blocker per PRD
+# FR-36.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: format-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  format:
+    name: ruff format --check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Detect relevant changes
+        id: detect
+        uses: ./.github/actions/detect-changes
+        with:
+          globs: |
+            src/bpetite/**
+            tests/**
+            scripts/**
+            pyproject.toml
+
+      - name: Compute gate
+        id: gate
+        shell: bash
+        env:
+          RELEVANT: ${{ steps.detect.outputs.relevant }}
+        run: |
+          set -euo pipefail
+          if [[ "${RELEVANT}" != "true" ]]; then
+            echo "reason=no-relevant-changes" >> "${GITHUB_OUTPUT}"
+            echo "run=false" >> "${GITHUB_OUTPUT}"
+          elif [[ ! -f pyproject.toml ]]; then
+            echo "reason=pre-scaffold" >> "${GITHUB_OUTPUT}"
+            echo "run=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "reason=run" >> "${GITHUB_OUTPUT}"
+            echo "run=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: No-op
+        if: steps.gate.outputs.run != 'true'
+        shell: bash
+        run: echo "format.yml no-op (${{ steps.gate.outputs.reason }}); reporting success."
+
+      - name: Setup environment
+        if: steps.gate.outputs.run == 'true'
+        uses: ./.github/actions/setup-python-env
+
+      - name: Run ruff format --check
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: uv run ruff format --check .

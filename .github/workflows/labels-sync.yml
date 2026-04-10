@@ -1,0 +1,41 @@
+name: labels-sync
+
+# Non-blocking. Source-of-truth sync for repository labels using the
+# declarative `.github/labels.yml` taxonomy. Runs only when the taxonomy or
+# this workflow itself changes, or on manual dispatch. `delete-other-labels`
+# is true so labels removed from the config are pruned from the repository,
+# keeping the UI state identical to the repo state.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/labels.yml"
+      - ".github/workflows/labels-sync.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: labels-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: EndBug/label-sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Sync labels
+        uses: EndBug/label-sync@52074158190acb45f3077f9099fea818aa43f97a # v2.3.3
+        with:
+          config-file: .github/labels.yml
+          delete-other-labels: true

@@ -1,0 +1,150 @@
+name: cli-smoke
+
+# Required merge gate. End-to-end smoke test of the `bpetite` CLI contract:
+# train -> encode -> decode roundtrip on the committed tiny fixture, with
+# strict stdout/stderr channel discipline verified by the shell harness.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  cli-smoke:
+    name: bpetite CLI smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Detect relevant changes
+        id: detect
+        uses: ./.github/actions/detect-changes
+        with:
+          globs: |
+            src/bpetite/**
+            tests/fixtures/**
+            pyproject.toml
+            uv.lock
+
+      - name: Compute gate
+        id: gate
+        shell: bash
+        env:
+          RELEVANT: ${{ steps.detect.outputs.relevant }}
+        run: |
+          set -euo pipefail
+          if [[ "${RELEVANT}" != "true" ]]; then
+            echo "reason=no-relevant-changes" >> "${GITHUB_OUTPUT}"
+            echo "run=false" >> "${GITHUB_OUTPUT}"
+          elif [[ ! -f pyproject.toml || ! -f tests/fixtures/tiny.txt ]]; then
+            echo "reason=pre-scaffold" >> "${GITHUB_OUTPUT}"
+            echo "run=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "reason=run" >> "${GITHUB_OUTPUT}"
+            echo "run=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: No-op
+        if: steps.gate.outputs.run != 'true'
+        shell: bash
+        run: echo "cli-smoke.yml no-op (${{ steps.gate.outputs.reason }}); reporting success."
+
+      - name: Setup environment
+        if: steps.gate.outputs.run == 'true'
+        uses: ./.github/actions/setup-python-env
+
+      - name: Drive CLI train -> encode -> decode
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          work="$(mktemp -d)"
+          artifact="${work}/tokenizer.json"
+          train_stdout="${work}/train.stdout"
+          train_stderr="${work}/train.stderr"
+          encode_stdout="${work}/encode.stdout"
+          encode_stderr="${work}/encode.stderr"
+          decode_stdout="${work}/decode.stdout"
+          decode_stderr="${work}/decode.stderr"
+
+          # 1. train: progress on stderr, JSON summary on stdout.
+          uv run bpetite train \
+            --input tests/fixtures/tiny.txt \
+            --vocab-size 260 \
+            --output "${artifact}" \
+            >"${train_stdout}" 2>"${train_stderr}"
+
+          python - "${train_stdout}" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          required = {
+              "corpus_bytes",
+              "requested_vocab_size",
+              "actual_mergeable_vocab_size",
+              "special_token_count",
+              "elapsed_ms",
+          }
+          missing = required - data.keys()
+          if missing:
+              raise SystemExit(f"train stdout missing keys: {sorted(missing)}")
+          PY
+
+          # 2. encode: compact JSON array on stdout only.
+          uv run bpetite encode \
+            --model "${artifact}" \
+            --text "Hello world" \
+            >"${encode_stdout}" 2>"${encode_stderr}"
+
+          python - "${encode_stdout}" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          ids = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
+              raise SystemExit(f"encode stdout is not a list[int]: {ids!r}")
+          PY
+
+          if [[ -s "${encode_stderr}" ]]; then
+            echo "encode wrote to stderr unexpectedly:" >&2
+            cat "${encode_stderr}" >&2
+            exit 1
+          fi
+
+          # 3. decode: feed the ids back, expect the exact original text.
+          mapfile -t ID_ARRAY < <(python -c 'import json,sys;print(*json.load(open(sys.argv[1])))' "${encode_stdout}" | tr ' ' '\n')
+          uv run bpetite decode \
+            --model "${artifact}" \
+            --ids "${ID_ARRAY[@]}" \
+            >"${decode_stdout}" 2>"${decode_stderr}"
+
+          if [[ -s "${decode_stderr}" ]]; then
+            echo "decode wrote to stderr unexpectedly:" >&2
+            cat "${decode_stderr}" >&2
+            exit 1
+          fi
+
+          decoded="$(cat "${decode_stdout}")"
+          if [[ "${decoded}" != "Hello world" ]]; then
+            echo "decode roundtrip mismatch: got '${decoded}'" >&2
+            exit 1
+          fi
+
+          echo "CLI smoke OK: train/encode/decode roundtripped 'Hello world'."
