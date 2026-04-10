@@ -8,10 +8,10 @@ description: Git commit approval workflow for repos using the sentinel-based com
 This skill governs the only approved path for committing changes in repos that
 use the sentinel-based commit guard. A raw `git commit` is blocked by the
 `require-commitall-approval` pre-commit hook. `scripts/commitall.sh` is
-interactive (human-at-keyboard `read -p` prompts for the message and for y/N
-approval), which means Claude cannot drive it end-to-end. Instead, Claude does
-the pre-flight work, drafts the commit message, and hands off; the user runs
-the script themselves in their own terminal.
+interactive (human-at-keyboard `read -p` prompts for staging choice, commit
+message, and y/N approval), which means Claude cannot drive it end-to-end.
+Instead, Claude does the pre-flight work, drafts the commit message, and
+hands off; the user runs the script themselves in their own terminal.
 
 ## When To Invoke
 
@@ -197,7 +197,11 @@ Skip this phase entirely on `BLOCKED` verdict. On `READY` or `WARN`:
   concerns (e.g. `hooks/` + `docs/prd` + `data/`), surface a one-line note
   under the drafted message: "split suggestion: this could be committed as
   (1) feat(hooks): ..., (2) docs(prd): ..., (3) chore(data): ...". Do not
-  split automatically. The user decides whether to break it up.
+  split automatically. The user decides whether to break it up. If they
+  choose to split, they run `/commitall` once per sub-commit and pick
+  stage mode `s` at the script's first prompt to name the paths belonging
+  to that commit; the remaining paths stay in the working tree for the
+  next round.
 - **Branch name proposal:** Only when Phase 1 flagged the current branch
   as `main`. Draft a branch of the form `<type>/<short-kebab-slug>`:
   - `<type>` matches the commit type (`feat`, `fix`, `chore`, `docs`,
@@ -255,6 +259,14 @@ Present a compact response with five sections in order:
 
    When the script prompts:
 
+   - `Choice [a/s/c]:` — type `a` for the common "commit every unstaged
+     and untracked change" path, `s` to enter a space-separated list of
+     paths to stage for this commit only (split-commit workflow), or `c`
+     to commit exactly what is already in the index untouched (preserves
+     pre-staged or `git add -p` selections). Press Enter.
+   - `Files:` — only shown after choosing `s`. Type the paths to stage,
+     separated by spaces, and press Enter. Directories and glob patterns
+     are forwarded to `git add` verbatim.
    - `Commit message:` — paste the drafted line above.
    - `Approve this commit? [y/N]` — type `y` and press Enter.
 
@@ -326,10 +338,17 @@ script's stdout/stderr into the next turn automatically). Then:
   because `trailing-whitespace` or `end-of-file-fixer` rewrote files. Those
   fixes are now in the working tree. Re-run `/commitall` — the second pass
   will include the auto-fixes in the diff and succeed.
-- **Partial staging** (`git add -p` already used): the current `commitall.sh`
-  runs `git add -A` before `git commit`, which defeats partial staging. If
-  the user has explicitly partial-staged, warn them that `git add -A` will
-  pull in the rest, and ask whether to proceed.
+- **Partial staging** (`git add -p` already used, or the user staged a
+  specific subset by hand): instruct the user to pick stage mode `c`
+  ("keep current index as-is") at the script's first prompt. That branch
+  skips `git add` entirely and commits exactly the current index,
+  preserving hunk-level staging. Picking mode `a` would sweep the
+  remaining unstaged changes into the commit and defeat the split.
+- **Split commits across unrelated concerns**: when Phase 2 flagged a
+  split suggestion and the user wants to execute it, each sub-commit is
+  a separate `/commitall` invocation that picks stage mode `s` at the
+  first prompt and enters the paths belonging to that sub-commit. The
+  remaining paths stay unstaged until the next round.
 - **Current branch is `main`**: Phase 2 must draft a branch name, Phase 3
   must prepend `git checkout -b <branch>` to the hand-off command. Never
   allow the commit to land on `main` — that is a bpetite CLAUDE.md §Git
