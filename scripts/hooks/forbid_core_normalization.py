@@ -28,7 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _ui import Violation, render_failure  # noqa: E402
+from _ui import Violation, render_failure
 
 _RULE = "forbid-core-normalization"
 _WHY = (
@@ -79,9 +79,11 @@ def _check_file(path: Path) -> list[tuple[int, str]]:
             ):
                 violations.append((node.lineno, "unicodedata.normalize(...) call"))
         elif isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name == "unicodedata":
-                    violations.append((node.lineno, "import unicodedata"))
+            violations.extend(
+                (node.lineno, "import unicodedata")
+                for alias in node.names
+                if alias.name == "unicodedata"
+            )
         elif isinstance(node, ast.ImportFrom) and node.module == "unicodedata":
             violations.append((node.lineno, "from unicodedata import ..."))
     return violations

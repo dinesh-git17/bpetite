@@ -95,7 +95,7 @@ def _require_env(name: str) -> str:
 
 
 def _gh_request(url: str, token: str) -> dict[str, object]:
-    req = urllib.request.Request(url)
+    req = urllib.request.Request(url)  # noqa: S310  # GitHub HTTPS API only
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("Accept", "application/vnd.github+json")
     req.add_header("X-GitHub-Api-Version", "2022-11-28")
@@ -175,8 +175,7 @@ def _collect(repo: str, head_sha: str, token: str) -> list[RunResult]:
 def _status_cell(result: RunResult) -> str:
     if result.status != "completed":
         return result.status
-    conclusion = result.conclusion or "unknown"
-    return conclusion
+    return result.conclusion or "unknown"
 
 
 def _comment_cell(result: RunResult) -> str:
@@ -237,10 +236,10 @@ def render(pr_number: str, results: list[RunResult]) -> str:
     lines.append("")
     lines.append("| Workflow | Status | Comment if failure and where |")
     lines.append("| --- | --- | --- |")
-    for result in results:
-        lines.append(
-            f"| {result.display} | {_status_cell(result)} | {_comment_cell(result)} |"
-        )
+    lines.extend(
+        f"| {result.display} | {_status_cell(result)} | {_comment_cell(result)} |"
+        for result in results
+    )
     lines.append("")
     lines.append(_final_line(pr_number, results))
     lines.append("")

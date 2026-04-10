@@ -24,7 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _ui import Violation, render_failure  # noqa: E402
+from _ui import Violation, render_failure
 
 _RULE = "forbid-core-networking"
 _WHY = (
@@ -81,9 +81,11 @@ def _check_file(path: Path) -> list[tuple[int, str]]:
     violations: list[tuple[int, str]] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                if _is_forbidden(alias.name):
-                    violations.append((node.lineno, f"import {alias.name}"))
+            violations.extend(
+                (node.lineno, f"import {alias.name}")
+                for alias in node.names
+                if _is_forbidden(alias.name)
+            )
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
             if module and _is_forbidden(module):

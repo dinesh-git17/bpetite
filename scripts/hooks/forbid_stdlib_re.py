@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _ui import Violation, render_failure  # noqa: E402
+from _ui import Violation, render_failure
 
 _RULE = "forbid-stdlib-re-in-tokenizer"
 _WHY = (
@@ -44,9 +44,9 @@ def _check_file(path: Path) -> list[tuple[int, str]]:
     violations: list[tuple[int, str]] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name == "re":
-                    violations.append((node.lineno, "import re"))
+            violations.extend(
+                (node.lineno, "import re") for alias in node.names if alias.name == "re"
+            )
         elif isinstance(node, ast.ImportFrom) and node.module == "re":
             violations.append((node.lineno, "from re import ..."))
     return violations

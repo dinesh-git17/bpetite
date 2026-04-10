@@ -33,7 +33,7 @@ import fnmatch
 import os
 import subprocess
 import sys
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 
 def _emit(name: str, value: str) -> None:
@@ -41,7 +41,7 @@ def _emit(name: str, value: str) -> None:
     if not output:
         sys.stderr.write("GITHUB_OUTPUT is not set; cannot emit step outputs\n")
         raise SystemExit(1)
-    with open(output, "a", encoding="utf-8") as handle:
+    with Path(output).open("a", encoding="utf-8") as handle:
         handle.write(f"{name}={value}\n")
 
 
