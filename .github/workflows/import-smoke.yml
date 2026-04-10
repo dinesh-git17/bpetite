@@ -5,6 +5,19 @@ name: import-smoke
 # top of the main tests matrix and is therefore not a merge blocker.
 # Because it is non-blocking we are free to gate the trigger with top-level
 # `paths` filters to save Actions minutes.
+#
+# Phased-rollout gate: the job reports success as a no-op until both
+# prerequisites are present on the target ref, then runs the real import.
+# Prerequisites are checked as separate predicates in the Guard step:
+#   1. pyproject.toml                                          (Task 1-2)
+#   2. src/bpetite/__init__.py re-exports `Tokenizer` from an  (Task 3-3)
+#      internal module.
+# The second predicate exists because `Tokenizer` is scheduled to land at
+# Task 3-3, well after `pyproject.toml` (Task 1-2) and the first edits
+# under `src/bpetite/**` (Tasks 2-1 onward). Without it, every PR that
+# touches the package between Tasks 1-2 and 3-3 would show a red `import
+# bpetite` failure even though the failure is intentional phased-rollout
+# state and the workflow is not a merge blocker.
 
 on:
   pull_request:
@@ -38,17 +51,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Guard pre-scaffold state
+      - name: Compute gate
         id: gate
         shell: bash
         run: |
           set -euo pipefail
           if [[ ! -f pyproject.toml ]]; then
-            echo "pyproject.toml missing; skipping non-blocking import-smoke."
+            echo "reason=pre-scaffold" >> "${GITHUB_OUTPUT}"
+            echo "run=false" >> "${GITHUB_OUTPUT}"
+          elif [[ ! -f src/bpetite/__init__.py ]] || ! grep -qE '^from bpetite\._[a-z_]+ import Tokenizer' src/bpetite/__init__.py; then
+            echo "reason=pre-tokenizer-export" >> "${GITHUB_OUTPUT}"
             echo "run=false" >> "${GITHUB_OUTPUT}"
           else
+            echo "reason=run" >> "${GITHUB_OUTPUT}"
             echo "run=true" >> "${GITHUB_OUTPUT}"
           fi
+
+      - name: No-op
+        if: steps.gate.outputs.run != 'true'
+        shell: bash
+        run: echo "import-smoke.yml no-op (${{ steps.gate.outputs.reason }}); reporting success."
 
       - name: Setup environment
         if: steps.gate.outputs.run == 'true'
