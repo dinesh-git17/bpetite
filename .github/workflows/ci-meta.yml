@@ -109,7 +109,13 @@ jobs:
           (
             cd "${WORKDIR}"
             git init -q
-            git -c user.email=ci@bpetite -c user.name=ci commit -q --allow-empty -m base
+            # Stage the copied script into the base so the probe commit's
+            # diff only contains the synthetic probe file. Previously the
+            # base was `--allow-empty` and `git add .` at probe time swept
+            # the still-untracked detect_changes.py into the probe commit,
+            # pushing changed_count to 2 and failing the assertion.
+            git add detect_changes.py
+            git -c user.email=ci@bpetite -c user.name=ci commit -q -m base
             BASE_SHA="$(git rev-parse HEAD)"
             mkdir -p src/bpetite
             printf 'x\n' > src/bpetite/_probe.py
