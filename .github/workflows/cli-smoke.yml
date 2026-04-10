@@ -3,6 +3,16 @@ name: cli-smoke
 # Required merge gate. End-to-end smoke test of the `bpetite` CLI contract:
 # train -> encode -> decode roundtrip on the committed tiny fixture, with
 # strict stdout/stderr channel discipline verified by the shell harness.
+#
+# Phased-rollout gate: the job reports success as a no-op until all three
+# prerequisites are present on the target ref, then runs the full roundtrip.
+# Prerequisites are checked as separate predicates in the Compute gate step:
+#   1. pyproject.toml                                    (Task 1-2)
+#   2. tests/fixtures/tiny.txt                           (Task 2-2)
+#   3. src/bpetite/_cli.py defines a top-level `main`    (Task 4-1)
+# The third predicate exists because Task 2-2 lands tiny.txt several tasks
+# before Task 4-1 implements the CLI entry point. Without it the gate would
+# fail every PR in the multi-task window 2-2 -> 4-1 (see issue #3).
 
 on:
   pull_request:
@@ -51,6 +61,9 @@ jobs:
             echo "run=false" >> "${GITHUB_OUTPUT}"
           elif [[ ! -f pyproject.toml || ! -f tests/fixtures/tiny.txt ]]; then
             echo "reason=pre-scaffold" >> "${GITHUB_OUTPUT}"
+            echo "run=false" >> "${GITHUB_OUTPUT}"
+          elif [[ ! -f src/bpetite/_cli.py ]] || ! grep -q '^def main(' src/bpetite/_cli.py; then
+            echo "reason=pre-cli-main" >> "${GITHUB_OUTPUT}"
             echo "run=false" >> "${GITHUB_OUTPUT}"
           else
             echo "reason=run" >> "${GITHUB_OUTPUT}"
