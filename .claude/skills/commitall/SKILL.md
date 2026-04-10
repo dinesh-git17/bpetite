@@ -135,10 +135,16 @@ Gather git state and scan for gotchas. All audits run on every invocation; the
 cost is three git calls and one grep pass, sub-second.
 
 1. **Git state survey:**
+   - `git branch --show-current` — current branch
    - `git status --short`
    - `git diff --stat` (unstaged)
    - `git diff --cached --stat` (staged)
    - If no prior commits, note "initial commit, no HEAD yet".
+   - If the current branch is `main` (the protected default per bpetite
+     CLAUDE.md §Git Workflow), flag it: Phase 2 must propose a feature
+     branch and Phase 3 must prepend branch creation to the hand-off.
+     Committing directly to `main` is a governance violation; this skill
+     never silently allows it.
 2. **Grouping:** Bucket untracked/modified/staged paths by top-level directory
    so the user sees the shape of the commit at a glance.
 3. **Red-flag scan (any hit → `BLOCKED` verdict):**
@@ -192,15 +198,41 @@ Skip this phase entirely on `BLOCKED` verdict. On `READY` or `WARN`:
   under the drafted message: "split suggestion: this could be committed as
   (1) feat(hooks): ..., (2) docs(prd): ..., (3) chore(data): ...". Do not
   split automatically. The user decides whether to break it up.
+- **Branch name proposal:** Only when Phase 1 flagged the current branch
+  as `main`. Draft a branch of the form `<type>/<short-kebab-slug>`:
+  - `<type>` matches the commit type (`feat`, `fix`, `chore`, `docs`,
+    `refactor`, `test`). bpetite CLAUDE.md explicitly names `feat/`,
+    `fix/`, and `chore/`; the other commit types share the same
+    taxonomy and are acceptable prefixes.
+  - `<short-kebab-slug>` is a 2-5 word summary of the dominant concern,
+    kebab-cased, lowercased, ≤40 characters. Derive it from the same
+    signal that drove the commit subject; do not duplicate the full
+    subject verbatim.
+  - Example pairings:
+    - `chore(scaffold): add bpetite package stubs` →
+      `chore/scaffold-package-stubs`
+    - `feat(trainer): add deterministic pair counting` →
+      `feat/trainer-pair-counting`
+    - `fix(cli): correct encode stderr channel` →
+      `fix/cli-encode-stderr`
+  - If Phase 1 reported a feature branch (any non-`main` branch), skip
+    this bullet entirely. The user has already branched; inventing a new
+    branch would strand their existing work.
 
 ### Phase 3 — Hand-off
 
-Present a compact response with four sections in order:
+Present a compact response with five sections in order:
 
-1. **Audit block** — verdict, bucketed change summary, any warnings.
+1. **Audit block** — verdict, bucketed change summary, current branch, any
+   warnings.
 2. **Drafted message** — in a ` ``` ` code fence for copy-paste.
-3. **Split suggestion** — only if applicable.
-4. **Next step** — literal instructions:
+3. **Drafted branch** — only if Phase 2 proposed a branch. In a ` ``` `
+   code fence alongside the message.
+4. **Split suggestion** — only if applicable.
+5. **Next step** — literal instructions. The exact command depends on
+   whether a branch proposal is active.
+
+   **If the user is already on a feature branch (no branch proposal):**
 
    > Run this in your prompt (the `!` prefix runs it in your shell so the
    > output lands in the conversation):
@@ -208,14 +240,26 @@ Present a compact response with four sections in order:
    > ```
    > !bash scripts/commitall.sh
    > ```
+
+   **If Phase 2 drafted a branch because the current branch is `main`:**
+
+   > Run this in your prompt. The chain creates the feature branch first
+   > so the commit lands on the branch, not on `main`:
    >
-   > When the script prompts:
+   > ```
+   > !git checkout -b <drafted-branch> && bash scripts/commitall.sh
+   > ```
    >
-   > - `Commit message:` — paste the drafted line above.
-   > - `Approve this commit? [y/N]` — type `y` and press Enter.
-   >
-   > The script's `trap cleanup EXIT` scrubs `.git/COMMIT_APPROVED` on every
-   > exit path, including Ctrl-C, so there is no cleanup burden on you.
+   > Substitute `<drafted-branch>` with the exact branch name from the
+   > previous code fence.
+
+   When the script prompts:
+
+   - `Commit message:` — paste the drafted line above.
+   - `Approve this commit? [y/N]` — type `y` and press Enter.
+
+   The script's `trap cleanup EXIT` scrubs `.git/COMMIT_APPROVED` on every
+   exit path, including Ctrl-C, so there is no cleanup burden on you.
 
 Do not run `bash scripts/commitall.sh` yourself through the Bash tool. It
 will hang on `read -p`.
@@ -261,6 +305,13 @@ script's stdout/stderr into the next turn automatically). Then:
 - **Never** draft multi-line bodies — the script reads one line only, and
   the repo convention is subject-only.
 - **Never** proceed past `BLOCKED` without explicit resolution.
+- **Never** allow a commit to land on `main`. If Phase 1 detects `main`
+  as the current branch, Phase 2 must draft a branch name and Phase 3
+  must prepend `git checkout -b <branch>` to the hand-off command. This
+  enforces bpetite CLAUDE.md §Git Workflow ("Never push directly to
+  `main`. All changes go through PRs.") at commit time, before the
+  user has to back out a committed-to-main mistake by branching + hard-
+  resetting.
 
 ## Edge Cases
 
@@ -279,6 +330,15 @@ script's stdout/stderr into the next turn automatically). Then:
   runs `git add -A` before `git commit`, which defeats partial staging. If
   the user has explicitly partial-staged, warn them that `git add -A` will
   pull in the rest, and ask whether to proceed.
+- **Current branch is `main`**: Phase 2 must draft a branch name, Phase 3
+  must prepend `git checkout -b <branch>` to the hand-off command. Never
+  allow the commit to land on `main` — that is a bpetite CLAUDE.md §Git
+  Workflow violation and forces a branch-and-reset recovery dance after
+  the fact.
+- **Detached HEAD or a non-standard branch** (e.g. an `exp/*` throwaway):
+  surface the state in the audit, do not propose a new branch, and ask
+  the user to confirm the current branch is the intended commit target
+  before handing off.
 
 ## If The Script Doesn't Exist
 
