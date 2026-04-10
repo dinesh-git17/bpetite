@@ -114,7 +114,7 @@ Skills live in `.claude/skills/`. These are mandatory at their defined triggers 
 | `cli-contract`        | Working on `_cli.py` or `test_cli.py`                                     | stdout/stderr discipline, exit codes, argparse patterns                          |
 | `pytest-conventions`  | Writing or editing any file in `tests/`                                   | Naming, parametrize, fixture patterns, import mode                               |
 | `task-executor`       | Starting any task from the bpetite task list                              | Read task → confirm deps → implement → quality gate → verify acceptance criteria |
-| `commitall`           | User runs `/commitall` or any intent to commit working changes            | Audit working tree → draft Conventional Commits message → hand off → verify     |
+| `commitall`           | User runs `/commitall` or any intent to commit working changes            | Audit working tree → draft Conventional Commits message → hand off → verify      |
 
 Read the relevant skill before starting work. Do not bypass skills. The registry is authoritative unless Dinesh approves changes.
 
