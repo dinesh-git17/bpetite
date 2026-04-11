@@ -21,6 +21,7 @@ dev = [
     "ruff",
     "mypy",
     "tiktoken",
+    "types-regex",
 ]
 
 [tool.pytest.ini_options]

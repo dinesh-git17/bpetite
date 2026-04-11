@@ -5,5 +5,8 @@
   "shellcheck.ignorePatterns": {
     "**/.github/CODEOWNERS": true,
     "**/CODEOWNERS": true
-  }
+  },
+
+  "//python-interpreter": "Pin the editor's Python interpreter to the uv-managed project venv. Without this, the Mypy/Pylance/Ruff extensions fall back to a global or bundled interpreter that does not see dev dependencies installed via `uv sync` (e.g. types-regex), producing false-positive `import-untyped` diagnostics on packages that are correctly typed in CI via `uv run mypy --strict`.",
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
 }
