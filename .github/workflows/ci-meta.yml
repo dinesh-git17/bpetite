@@ -93,7 +93,6 @@ jobs:
       - name: Verify detect-changes composite action on a synthetic diff
         shell: bash
         env:
-          GITHUB_EVENT_NAME: pull_request
           INPUT_GLOBS: |
             src/bpetite/**
             tests/**
@@ -123,9 +122,18 @@ jobs:
             git -c user.email=ci@bpetite -c user.name=ci commit -q -m probe
             HEAD_SHA="$(git rev-parse HEAD)"
             : > out.txt
+            # GITHUB_EVENT_NAME must be overridden INLINE on the python3
+            # command, not at step level. GitHub Actions silently drops
+            # step-level `env:` overrides for the default GITHUB_* vars
+            # the runner injects, so on push events a step-level
+            # `GITHUB_EVENT_NAME: pull_request` has no effect and the
+            # script sees the runner's real event name. Bash's inline
+            # `VAR=value cmd` prefix sets the subprocess env directly,
+            # which Actions cannot intercept.
             PR_BASE_SHA="${BASE_SHA}" \
               PR_HEAD_SHA="${HEAD_SHA}" \
               GITHUB_OUTPUT="${PWD}/out.txt" \
+              GITHUB_EVENT_NAME=pull_request \
               python3 detect_changes.py
             grep -q '^relevant=true$' out.txt
             grep -q '^changed_count=1$' out.txt
