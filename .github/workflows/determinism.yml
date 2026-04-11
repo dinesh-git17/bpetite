@@ -2,7 +2,20 @@ name: determinism
 
 # Required merge gate. Enforces PRD FR-12 / Phase 2 Exit Gate: training the
 # same corpus at the same vocab size twice must produce byte-identical
-# artifacts. Implemented by `scripts/ci/check_determinism.py`.
+# artifacts. Implemented by `scripts/ci/check_determinism.py`, which drives
+# the installed `bpetite` console entry point through `uv run`.
+#
+# Phased-rollout gate: the job reports success as a no-op until all three
+# prerequisites are present on the target ref, then runs the real determinism
+# check. Prerequisites are checked as separate predicates in the Compute gate
+# step:
+#   1. pyproject.toml                                    (Task 1-2)
+#   2. tests/fixtures/tiny.txt                           (Task 2-2)
+#   3. src/bpetite/_cli.py defines a top-level `main`    (Task 4-1)
+# The third predicate mirrors cli-smoke.yml's gate. Without it, Task 2-2 --
+# which lands tiny.txt -- would flip this gate into the real check and fail
+# every PR in the multi-task window 2-2 -> 4-1 with an ImportError on
+# `bpetite._cli.main`. See issue #3 and PR #7 for the matching cli-smoke fix.
 
 on:
   pull_request:
@@ -52,6 +65,9 @@ jobs:
             echo "run=false" >> "${GITHUB_OUTPUT}"
           elif [[ ! -f pyproject.toml || ! -f tests/fixtures/tiny.txt ]]; then
             echo "reason=pre-scaffold" >> "${GITHUB_OUTPUT}"
+            echo "run=false" >> "${GITHUB_OUTPUT}"
+          elif [[ ! -f src/bpetite/_cli.py ]] || ! grep -q '^def main(' src/bpetite/_cli.py; then
+            echo "reason=pre-cli-main" >> "${GITHUB_OUTPUT}"
             echo "run=false" >> "${GITHUB_OUTPUT}"
           else
             echo "reason=run" >> "${GITHUB_OUTPUT}"
