@@ -237,11 +237,11 @@ Create a CI workflow that validates the repo on macOS and Linux with locked depe
 
 ---
 
-## Phase 2: Core Algorithm, Fixtures, and Persistence
+## ~~Phase 2: Core Algorithm, Fixtures, and Persistence~~
 
 **Goal:** Implement the canonical regex pre-tokenizer, deterministic trainer, atomic persistence layer, and the full determinism proof required by the PRD.
 
-### Task 2-1: Create Shared Constants and Core Contracts
+### ~~Task 2-1: Create Shared Constants and Core Contracts~~
 
 #### Objective
 
@@ -274,7 +274,7 @@ Centralize the canonical constants that must not drift across modules.
 
 - Claude Code
 
-### Task 2-2: Add Deterministic Test Fixtures
+### ~~Task 2-2: Add Deterministic Test Fixtures~~
 
 #### Objective
 
@@ -316,7 +316,7 @@ Commit the exact fixtures required for deterministic unit, integration, and CLI 
 
 - Claude Code
 
-### Task 2-3: Implement the Pre-tokenizer
+### ~~Task 2-3: Implement the Pre-tokenizer~~
 
 #### Objective
 
@@ -349,7 +349,7 @@ Implement the canonical GPT-2-style regex pre-tokenizer as a pure function that 
 
 - Claude Code
 
-### Task 2-4: Add Pre-tokenizer Unit Tests
+### ~~Task 2-4: Add Pre-tokenizer Unit Tests~~
 
 #### Objective
 
@@ -385,7 +385,7 @@ Verify the pre-tokenizer in isolation before trainer work depends on it.
 
 - Claude Code
 
-### Task 2-5: Implement the Deterministic Trainer
+### ~~Task 2-5: Implement the Deterministic Trainer~~
 
 #### Objective
 
@@ -429,7 +429,7 @@ Implement deterministic byte-level BPE training, special-token reservation, and 
 
 - Claude Code
 
-### Task 2-6: Add Trainer Unit Tests
+### ~~Task 2-6: Add Trainer Unit Tests~~
 
 #### Objective
 
@@ -470,7 +470,7 @@ Prove trainer correctness before persistence or encode/decode work builds on it.
 
 - Claude Code
 
-### Task 2-7: Implement Atomic Save and Validating Load
+### ~~Task 2-7: Implement Atomic Save and Validating Load~~
 
 #### Objective
 
@@ -522,7 +522,7 @@ Implement persistence with stable serialized bytes, atomic writes, and strict lo
 
 - Claude Code
 
-### Task 2-8: Add Persistence Tests and the Determinism Gate
+### ~~Task 2-8: Add Persistence Tests and the Determinism Gate~~
 
 #### Objective
 
@@ -569,7 +569,9 @@ Prove persistence correctness and satisfy the PRD determinism release requiremen
 
 - Claude Code
 
-### Phase 2 Exit Gate
+### ~~Phase 2 Exit Gate~~
+
+> **Closed 2026-04-14 (PR #20 merged).** All four bullets satisfied: pre-tokenizer tests landed in PR #13, trainer tests in PR #15, persistence tests in PR #20, and the two determinism proofs in `tests/test_persistence.py` confirm repeated training on the same corpus produces byte-identical artifacts.
 
 - Pre-tokenizer tests are green.
 - Trainer tests are green.
