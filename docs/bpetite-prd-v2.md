@@ -1,3 +1,12 @@
+---
+title: Product Requirements Document
+description: The v1 scope, goals, non-goals, and functional requirements for bpetite.
+slug: prd
+order: 1
+category: Reference
+published: true
+---
+
 # bpetite - Product Requirements Document
 
 **Version:** v3.0 - Handoff Ready  

@@ -1,0 +1,115 @@
+/* Design tokens. Single source of truth for color, type, and spacing. */
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/GeistVariable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/JetBrainsMono-Medium.woff2") format("woff2");
+}
+
+:root {
+  /* neutrals */
+  --bg: #0b0b0c;
+  --bg-raised: #121216;
+  --bg-sunken: #070708;
+  --fg: #ededee;
+  --fg-dim: #bcbcc1;
+  --fg-muted: #7c7c86;
+  --fg-faint: #4a4a52;
+  --rule: #1c1c22;
+  --rule-strong: #26262d;
+
+  /* single accent: electric blue, ~72% sat */
+  --accent: #4f7cff;
+  --accent-hover: #6f93ff;
+  --accent-ink: #0b0b0c;
+  --accent-soft: rgba(79, 124, 255, 0.14);
+  --accent-ring: rgba(79, 124, 255, 0.38);
+
+  /* code */
+  --code-bg: #0d0d11;
+  --code-border: #1a1a21;
+  --code-fg: #d8d8df;
+  --code-dim: #6a6a74;
+  --code-comment: #5b5b65;
+  --code-string: #8fbf8f;
+  --code-keyword: #6f9dff;
+  --code-number: #c98a7a;
+  --code-class: #d8c07a;
+  --code-func: #8fbbf0;
+
+  /* typography */
+  --font-sans:
+    "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-base: 0.9375rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: 2.5rem;
+  --fs-4xl: 3.5rem;
+  --fs-5xl: 5rem;
+
+  --lh-tight: 1.08;
+  --lh-snug: 1.25;
+  --lh-normal: 1.55;
+  --lh-relaxed: 1.7;
+
+  --tracking-tight: -0.02em;
+  --tracking-xtight: -0.035em;
+  --tracking-wide: 0.08em;
+
+  /* spacing scale (4px base) */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4.5rem;
+  --sp-9: 6.5rem;
+  --sp-10: 9rem;
+
+  /* layout */
+  --measure: 65ch;
+  --nav-h: 64px;
+  --container: 1280px;
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+
+  /* radius & lines */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --hair: 1px;
+
+  /* motion */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 140ms;
+  --dur: 220ms;
+  --dur-slow: 420ms;
+}

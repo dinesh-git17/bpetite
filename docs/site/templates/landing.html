@@ -1,0 +1,129 @@
+{% extends "base.html" %} {% block head %}
+<link rel="stylesheet" href="{{ base }}/assets/css/landing.css" />
+{% endblock %} {% block body_class %}page-landing{% endblock %} {% block content
+%}
+<section class="hero" id="top">
+  <div class="hero__grid">
+    <div class="hero__lede">
+      <div class="hero__eyebrow">
+        v0.1 <span class="hero__dot">&middot;</span> deterministic
+        <span class="hero__dot">&middot;</span> pure python
+      </div>
+      <h1 class="hero__title">
+        <span class="hero__title-main">bpetite</span>
+        <span class="hero__title-rule" aria-hidden="true"></span>
+      </h1>
+      <p class="hero__tag">
+        a byte-level BPE tokenizer, written from scratch,
+        <span class="hero__tag-em">built to be read</span>.
+      </p>
+      <p class="hero__body">
+        Pure Python with one runtime dependency. Byte-perfect round-trips on
+        every input &mdash; ASCII, Unicode, whitespace, empty strings, the
+        reserved special token. Deterministic training. A single-file versioned
+        artifact you can save, ship, and reload without behavioural drift.
+      </p>
+      <div class="hero__meta">
+        <a class="hero__link hero__link--primary" href="#docs">
+          <span>read the documentation</span>
+          <span class="hero__link-arrow" aria-hidden="true">&rarr;</span>
+        </a>
+        <a
+          class="hero__link hero__link--muted"
+          href="{{ repo_url }}"
+          rel="noopener noreferrer"
+        >
+          <span>source on github</span>
+          <span class="hero__link-arrow" aria-hidden="true">&#x2197;</span>
+        </a>
+      </div>
+    </div>
+    <aside class="hero__terminal" aria-label="example usage">
+      <div class="term">
+        <div class="term__chrome">
+          <span class="term__dot term__dot--a"></span>
+          <span class="term__dot term__dot--b"></span>
+          <span class="term__dot term__dot--c"></span>
+          <span class="term__title">~/bpetite &mdash; zsh</span>
+        </div>
+        <pre
+          class="term__body"
+        ><span class="term__prompt">$</span> <span class="term__cmd">bpetite train</span> corpus.txt <span class="term__flag">--vocab-size</span> 8000 <span class="term__flag">--out</span> tok.json
+<span class="term__out">[train] read 1.2M chars &rarr; 4096 initial byte tokens</span>
+<span class="term__out">[train] merges: 7744/7744  done in 12.4s</span>
+<span class="term__out">[train] wrote tok.json (217 KB, sha256 d91c&hellip;)</span>
+
+<span class="term__prompt">$</span> <span class="term__cmd">bpetite encode</span> <span class="term__str">&quot;hello, tokenizer&quot;</span> <span class="term__flag">--model</span> tok.json
+<span class="term__out">[104, 101, 108, 108, 111, 44, 32, 3412, 5019]</span>
+
+<span class="term__prompt">$</span> <span class="term__cmd">bpetite decode</span> 104 101 108 108 111 <span class="term__flag">--model</span> tok.json
+<span class="term__out">hello</span><span class="term__caret" aria-hidden="true"></span>
+</pre>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="section" id="overview">
+  <div class="section__head">
+    <span class="section__kicker">01</span>
+    <h2 class="section__title">what it is</h2>
+  </div>
+  <div class="section__grid">
+    <div class="section__prose">{{ overview_html | safe }}</div>
+    <dl class="invariants" aria-label="invariants">
+      {% for item in invariants %}
+      <div class="invariants__row">
+        <dt class="invariants__key">{{ item.key }}</dt>
+        <dd class="invariants__val">{{ item.val }}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+  </div>
+</section>
+
+<section class="section section--why" id="why">
+  <div class="section__head">
+    <span class="section__kicker">02</span>
+    <h2 class="section__title">why I built it</h2>
+  </div>
+  <div class="section__prose section__prose--wide">{{ why_html | safe }}</div>
+</section>
+
+<section class="section section--docs" id="docs">
+  <div class="section__head">
+    <span class="section__kicker">03</span>
+    <h2 class="section__title">documentation</h2>
+    <p class="section__note">
+      auto-discovered from <span class="mono">docs/</span> at build time. more
+      will land as the codebase grows.
+    </p>
+  </div>
+  <ol class="doclist">
+    {% for doc in docs %}
+    <li class="doclist__row">
+      <a class="doclist__link" href="{{ base }}/docs/{{ doc.slug }}.html">
+        <span class="doclist__num">{{ "%02d"|format(loop.index) }}</span>
+        <div class="doclist__text">
+          <div class="doclist__title">{{ doc.title }}</div>
+          <div class="doclist__desc">{{ doc.description }}</div>
+        </div>
+        <div class="doclist__meta">
+          <span class="doclist__category">{{ doc.category }}</span>
+          <span class="doclist__sep" aria-hidden="true">&middot;</span>
+          <span>{{ doc.reading_time }}</span>
+          <span class="doclist__sep" aria-hidden="true">&middot;</span>
+          <span>upd {{ doc.updated }}</span>
+        </div>
+        <span class="doclist__arrow" aria-hidden="true">&rarr;</span>
+      </a>
+    </li>
+    {% else %}
+    <li class="doclist__empty">
+      no published docs yet. add <span class="mono">published: true</span> to a
+      markdown file&rsquo;s frontmatter.
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

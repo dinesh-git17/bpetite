@@ -1,0 +1,166 @@
+/* Code block styling. Pygments-emitted spans + our <pre>/copy-button chrome. */
+
+.doc__body figure.code,
+.doc__body pre.code {
+  margin: 0;
+  position: relative;
+}
+
+.doc__body figure.code {
+  display: block;
+}
+
+.doc__body figure.code figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-4);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+  border: 1px solid var(--code-border);
+  border-bottom: 0;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.doc__body figure.code pre,
+.doc__body pre.code {
+  margin: 0;
+  padding: var(--sp-5);
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  line-height: 1.65;
+  color: var(--code-fg);
+  tab-size: 4;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.doc__body figure.code pre {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.doc__body pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.doc__body .copy-btn {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.doc__body figure.code:hover .copy-btn,
+.doc__body pre.code:hover .copy-btn,
+.doc__body .copy-btn:focus-visible {
+  opacity: 1;
+}
+.doc__body .copy-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent-ring);
+}
+.doc__body .copy-btn:active { transform: translateY(1px); }
+.doc__body .copy-btn[data-state="copied"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+/* Pygments token palette. Class names are pygments defaults. */
+.doc__body .highlight .c,
+.doc__body .highlight .ch,
+.doc__body .highlight .cm,
+.doc__body .highlight .c1,
+.doc__body .highlight .cs,
+.doc__body .highlight .cp,
+.doc__body .highlight .cpf { color: var(--code-comment); font-style: italic; }
+
+.doc__body .highlight .k,
+.doc__body .highlight .kc,
+.doc__body .highlight .kd,
+.doc__body .highlight .kn,
+.doc__body .highlight .kp,
+.doc__body .highlight .kr,
+.doc__body .highlight .kt { color: var(--code-keyword); }
+
+.doc__body .highlight .s,
+.doc__body .highlight .sa,
+.doc__body .highlight .sb,
+.doc__body .highlight .sc,
+.doc__body .highlight .dl,
+.doc__body .highlight .sd,
+.doc__body .highlight .s2,
+.doc__body .highlight .se,
+.doc__body .highlight .sh,
+.doc__body .highlight .si,
+.doc__body .highlight .sx,
+.doc__body .highlight .sr,
+.doc__body .highlight .s1,
+.doc__body .highlight .ss { color: var(--code-string); }
+
+.doc__body .highlight .m,
+.doc__body .highlight .mb,
+.doc__body .highlight .mf,
+.doc__body .highlight .mh,
+.doc__body .highlight .mi,
+.doc__body .highlight .mo,
+.doc__body .highlight .il { color: var(--code-number); }
+
+.doc__body .highlight .nc,
+.doc__body .highlight .nn,
+.doc__body .highlight .ne,
+.doc__body .highlight .nt { color: var(--code-class); }
+
+.doc__body .highlight .nf,
+.doc__body .highlight .fm { color: var(--code-func); }
+
+.doc__body .highlight .o,
+.doc__body .highlight .ow { color: var(--fg); }
+
+.doc__body .highlight .p  { color: var(--fg-muted); }
+.doc__body .highlight .nb { color: var(--code-func); }
+.doc__body .highlight .bp { color: var(--code-keyword); font-style: italic; }
+.doc__body .highlight .nv,
+.doc__body .highlight .vc,
+.doc__body .highlight .vg,
+.doc__body .highlight .vi { color: var(--fg); }
+.doc__body .highlight .na { color: var(--code-class); }
+
+.doc__body .highlight .err {
+  color: #ff6f6f;
+  background: rgba(255, 111, 111, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 0 2px;
+}
+
+.doc__body .highlight .gh,
+.doc__body .highlight .gu { color: var(--accent); font-weight: 500; }
+.doc__body .highlight .gd { color: #ff8b8b; }
+.doc__body .highlight .gi { color: #8fbf8f; }
+.doc__body .highlight .gs { font-weight: 500; }
+.doc__body .highlight .ge { font-style: italic; }

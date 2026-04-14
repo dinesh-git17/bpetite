@@ -1,0 +1,71 @@
+name: pages
+
+# Builds and deploys the bpetite documentation site to GitHub Pages.
+#
+# Runtime is pure static HTML/CSS/JS. Markdown is rendered at build time
+# by docs/site/build.py (markdown-it-py + Pygments). The script fails the
+# build if any emitted HTML would violate the strict CSP shipped in the
+# base template.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# One in-flight deploy at a time; never cancel a running deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: build site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need full history so docs/site/build.py can read git log for
+          # last-modified timestamps on each published document.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python and docs dependencies
+        run: uv sync --group docs --python 3.12
+
+      - name: Build site
+        run: uv run python docs/site/build.py --out _site
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: deploy to pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,52 @@
+{% extends "base.html" %} {% block head %}
+<link rel="stylesheet" href="{{ base }}/assets/css/doc.css" />
+<link rel="stylesheet" href="{{ base }}/assets/css/code.css" />
+{% endblock %} {% block body_class %}page-doc{% endblock %} {% block content %}
+<article class="doc">
+  <header class="doc__header">
+    <a class="doc__back" href="{{ base }}/index.html#docs">
+      <span aria-hidden="true">&larr;</span>
+      <span>all documents</span>
+    </a>
+    <div class="doc__kicker">{{ doc.category }}</div>
+    <h1 class="doc__title">{{ doc.title }}</h1>
+    <p class="doc__desc">{{ doc.description }}</p>
+    <div class="doc__meta">
+      <span class="doc__meta-item">{{ doc.reading_time }}</span>
+      <span class="doc__meta-sep" aria-hidden="true">&middot;</span>
+      <span class="doc__meta-item">updated {{ doc.updated }}</span>
+      <span class="doc__meta-sep" aria-hidden="true">&middot;</span>
+      <span class="doc__meta-item">{{ doc.word_count }} words</span>
+    </div>
+  </header>
+  <div class="doc__grid">
+    <aside class="doc__aside" aria-label="Table of contents">
+      {% if toc %}
+      <details class="doc__toc" open>
+        <summary class="doc__toc-sum">on this page</summary>
+        <nav>
+          <ol class="doc__toc-list">
+            {% for h in toc %}
+            <li class="doc__toc-item doc__toc-l{{ h.level }}">
+              <a href="#{{ h.anchor }}">{{ h.text }}</a>
+            </li>
+            {% endfor %}
+          </ol>
+        </nav>
+      </details>
+      {% endif %}
+    </aside>
+    <div class="doc__body">{{ body | safe }}</div>
+  </div>
+  <footer class="doc__footer">
+    <a
+      class="doc__edit"
+      href="{{ repo_url }}/edit/main/{{ doc.source_path }}"
+      rel="noopener noreferrer"
+    >
+      <span>edit this page on github</span>
+      <span aria-hidden="true">&#x2197;</span>
+    </a>
+  </footer>
+</article>
+{% endblock %}
