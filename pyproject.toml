@@ -23,6 +23,13 @@ dev = [
     "tiktoken",
     "types-regex",
 ]
+docs = [
+    "markdown-it-py",
+    "mdit-py-plugins",
+    "pygments",
+    "jinja2",
+    "python-frontmatter",
+]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
@@ -59,6 +66,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "scripts/**" = ["S603", "S607"]
 "tests/**" = ["S101"]
+"docs/site/**" = ["S603", "S607", "T201"]
 
 [tool.mypy]
 python_version = "3.12"

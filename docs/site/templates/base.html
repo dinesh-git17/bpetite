@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="index,follow" />
+    <meta name="description" content="{{ page_description }}" />
+    <meta property="og:title" content="{{ page_title }}" />
+    <meta property="og:description" content="{{ page_description }}" />
+    <meta property="og:type" content="website" />
+    <title>{{ page_title }}</title>
+    <link
+      rel="icon"
+      href="{{ base }}/assets/favicon.svg"
+      type="image/svg+xml"
+    />
+    <link rel="stylesheet" href="{{ base }}/assets/css/tokens.css" />
+    <link rel="stylesheet" href="{{ base }}/assets/css/base.css" />
+    {% block head %}{% endblock %}
+  </head>
+  <body class="{% block body_class %}{% endblock %}">
+    <a class="skip" href="#main">skip to content</a>
+    <header class="nav">
+      <div class="nav__wrap">
+        <a class="nav__brand" href="{{ base }}/index.html">
+          <span class="nav__brand-mark">bpetite</span>
+          <span class="nav__brand-sep" aria-hidden="true">/</span>
+          <span class="nav__brand-sub">docs</span>
+        </a>
+        <nav class="nav__links" aria-label="Primary">
+          <a href="{{ base }}/index.html#overview">overview</a>
+          <a href="{{ base }}/index.html#docs">docs</a>
+          <a href="{{ repo_url }}" rel="noopener noreferrer" class="nav__ext"
+            >github<span aria-hidden="true">&#x2197;</span></a
+          >
+        </nav>
+      </div>
+    </header>
+    <main id="main">{% block content %}{% endblock %}</main>
+    <footer class="footer">
+      <div class="footer__wrap">
+        <span class="footer__line"
+          >bpetite <span class="footer__sep">//</span> {{ build_sha }}
+          <span class="footer__sep">//</span> built {{ build_date }}</span
+        >
+        <span class="footer__line"
+          >&#169; {{ build_year }} dinesh dawonauth
+          <span class="footer__sep">//</span> mit license</span
+        >
+      </div>
+    </footer>
+    <script src="{{ base }}/assets/js/site.js" defer></script>
+  </body>
+</html>
