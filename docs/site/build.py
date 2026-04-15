@@ -212,13 +212,15 @@ def _slug_from_path(path: Path) -> str:
 
 
 def discover_published_docs(md: MarkdownIt) -> list[DocPage]:
-    """Scan ``docs/*.md`` and return every doc with ``published: true``.
+    """Scan ``docs/**/*.md`` and return every doc with ``published: true``.
 
-    Only direct children of ``docs/`` are scanned — files under
-    ``docs/site/`` (templates, assets, content) are never auto-published.
+    Traverses subdirectories recursively. Files under ``docs/site/``
+    (templates, assets, content) are excluded.
     """
     pages: list[DocPage] = []
-    for md_path in sorted(DOCS_DIR.glob("*.md")):
+    for md_path in sorted(DOCS_DIR.rglob("*.md")):
+        if SITE_DIR in md_path.parents:
+            continue
         post = frontmatter.load(md_path)
         if not post.metadata.get("published", False):
             continue
@@ -255,7 +257,7 @@ def render_content_fragment(md: MarkdownIt, path: Path) -> str:
         msg = f"content fragment missing: {path}"
         raise FileNotFoundError(msg)
     text = path.read_text(encoding="utf-8")
-    return md.render(text)
+    return str(md.render(text))
 
 
 def copy_assets(out_dir: Path) -> None:
