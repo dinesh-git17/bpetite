@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import html as html_lib
+import re
 import shutil
 import subprocess
 import sys
@@ -251,6 +252,81 @@ def discover_published_docs(md: MarkdownIt) -> list[DocPage]:
     return pages
 
 
+_HREF_RE = re.compile(r'href="([^"]*)"')
+
+
+def _build_slug_map(pages: list[DocPage]) -> dict[str, str]:
+    """Map canonical repo-relative source paths to doc slugs."""
+    return {page.source_path: page.slug for page in pages}
+
+
+def _rewrite_body_links(
+    body_html: str,
+    source_path: str,
+    slug_map: dict[str, str],
+) -> str:
+    """Rewrite internal repo-relative links inside a rendered doc body.
+
+    Markdown source uses repo-relative paths (``encode-decode.md``,
+    ``../phase-2/core-algorithm.md``, ``../../src/bpetite/_encoder.py``)
+    because those render correctly in GitHub's markdown preview. The
+    generated site flattens every published doc into ``/docs/<slug>.html``
+    regardless of source subdirectory, so the raw relative paths 404 at
+    runtime. This pass rewrites them to the correct targets.
+
+    Three cases, evaluated in order:
+
+    * The href resolves to a published doc's source markdown — rewrite to
+      ``<slug>.html``, preserving any fragment.
+    * The href resolves to any other file inside the repo (unpublished
+      markdown like the PRD, or source code referenced from ``Related
+      reading`` sections) — rewrite to the GitHub blob URL for that path.
+    * The href resolves to a repo directory — rewrite to the GitHub tree
+      URL.
+
+    Absolute URLs, pure anchor links (``#foo``), and hrefs that cannot be
+    resolved into a real repo path pass through unchanged.
+    """
+    source_dir = (REPO_ROOT / source_path).parent
+    repo_root_resolved = REPO_ROOT.resolve()
+
+    def _replace(match: re.Match[str]) -> str:
+        raw = match.group(1)
+        if not raw or raw.startswith(("http://", "https://", "mailto:", "#")):
+            return match.group(0)
+        if "#" in raw:
+            path_part, _, frag_part = raw.partition("#")
+            fragment = f"#{frag_part}"
+        else:
+            path_part = raw
+            fragment = ""
+        if not path_part:
+            return match.group(0)
+        try:
+            resolved = (source_dir / path_part).resolve()
+            rel = resolved.relative_to(repo_root_resolved).as_posix()
+        except (ValueError, OSError):
+            return match.group(0)
+        slug = slug_map.get(rel)
+        if slug is not None:
+            return f'href="{slug}.html{fragment}"'
+        target = repo_root_resolved / rel
+        if target.is_file():
+            return f'href="{REPO_URL}/blob/main/{rel}{fragment}"'
+        if target.is_dir():
+            return f'href="{REPO_URL}/tree/main/{rel}{fragment}"'
+        return match.group(0)
+
+    return _HREF_RE.sub(_replace, body_html)
+
+
+def rewrite_internal_links(pages: list[DocPage]) -> None:
+    """Rewrite internal repo-relative links across every published page."""
+    slug_map = _build_slug_map(pages)
+    for page in pages:
+        page.body_html = _rewrite_body_links(page.body_html, page.source_path, slug_map)
+
+
 def render_content_fragment(md: MarkdownIt, path: Path) -> str:
     """Render a non-doc markdown file (landing content) to raw HTML."""
     if not path.exists():
@@ -435,6 +511,7 @@ def build_site(out_dir: Path) -> None:
     md = build_markdown()
     env = _build_env()
     pages = discover_published_docs(md)
+    rewrite_internal_links(pages)
 
     build_sha = git_short_sha()
     build_date = dt.datetime.now(tz=dt.UTC).strftime("%Y-%m-%d")
