@@ -116,6 +116,7 @@ Skills live in `.claude/skills/`. These are mandatory at their defined triggers 
 | `pytest-conventions`  | Writing or editing any file in `tests/`                                   | Naming, parametrize, fixture patterns, import mode                               |
 | `task-executor`       | Starting any task from the bpetite task list                              | Read task → confirm deps → implement → quality gate → verify acceptance criteria |
 | `commitall`           | User runs `/commitall` or any intent to commit working changes            | Audit working tree → draft Conventional Commits message → hand off → verify      |
+| `readme-writer`       | Any request to write, draft, or create a README for a repository          | Explore repo → targeted intake → write per repo-type IA → anti-slop pass          |
 
 Read the relevant skill before starting work. Do not bypass skills. The registry is authoritative unless Dinesh approves changes.
 
