@@ -84,7 +84,7 @@ Most engineers use tokenizers as opaque dependencies and cannot reason about the
 ## Constraints
 
 - Core algorithm implementation must be pure Python; no Rust bindings, no C extensions, no external tokenizer libraries in the implementation path.
-- The only runtime dependency beyond the standard library is `regex`.
+- The only runtime dependencies beyond the standard library are `regex` (pre-tokenizer) and `rich` (CLI presentation layer only — must not appear in the core algorithm or `Tokenizer` import path).
 - `vocab_size` refers only to mergeable vocabulary size and excludes reserved special tokens.
 - The artifact format must be a single JSON file.
 - Supported platforms for v1 are macOS and Linux. Windows is not a supported execution target for the provided shell scripts.

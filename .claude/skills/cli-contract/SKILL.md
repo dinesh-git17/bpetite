@@ -10,6 +10,14 @@ This skill encodes all non-negotiable rules for `src/bpetite/_cli.py` and
 and the task-list acceptance criteria for Tasks 4-1 and 4-2. Deviating from
 any of these rules will produce a test failure or a broken reviewer experience.
 
+**Pair with `rich-cli`.** This skill governs the *contract* (which channel,
+which format, which exit code). The `rich-cli` skill governs the *presentation*
+(themes, progress bars, panels, error rendering). Load both when touching
+`_cli.py`. When the two appear to conflict, the contract wins — any Rich
+`Console` that writes to stdout must instead be constructed with `stderr=True`,
+and every machine-readable result must still be written via raw
+`sys.stdout.write` or `print` with no Rich markup.
+
 ---
 
 ## 1. Channel Discipline — The One Rule That Breaks Everything
@@ -122,23 +130,84 @@ integers.
 
 ## 6. Training Progress Output
 
-Progress must be written to stderr only, never stdout. The callback-based
-approach is described in Section 7; this section covers the output format.
+Progress is written to stderr only, never stdout. The `train` subcommand
+emits three kinds of stderr output, in order:
 
-Required progress events and their stderr format:
+1. A **configuration panel** before training begins, titled `"Training"`,
+   containing a key/value grid with the input path, requested vocab size,
+   output path, and the `--force` flag state. Rendered via
+   `render_kv_box` on the shared stderr `Console` from `_ui.py`.
 
-```
-Training started: vocab_size=512, corpus_bytes=1234567
-Merges completed: 50
-Merges completed: 100
-Merges completed: 150
-...
-Training complete: actual_mergeable_vocab_size=512, elapsed_ms=4201.33
-```
+2. **Plain styled lifecycle lines** driven by the
+   `_trainer.train_bpe` callback. The callback receives a
+   `ProgressEvent` with `kind` in `{"start", "merge", "complete"}`,
+   `merges_completed`, and `merges_planned`. Each event maps to exactly
+   one `console.print` line:
 
-Emit a "Merges completed" line at start (0), every 100 merges, and at
-completion. The exact wording is flexible but must be human-readable and
-grep-friendly. Do not use JSON for progress lines.
+   - `kind="start"` — fires once before the merge loop begins. The line
+     is `"Training started: planned={merges_planned}"` with `info` style.
+     This is the load-bearing update for the `start` bullet of the
+     task-list progress rule.
+   - `kind="merge"` — fires every 100 completed merges. The line is
+     `"Training merges: {merges_completed} / {merges_planned}"` with
+     `info` style. This is the `every 100 merges completed` bullet.
+   - `kind="complete"` — fires once after the loop exits, whether the
+     run completed normally or early-stopped. The line is
+     `"Training complete: merges={merges_completed}"` with `success`
+     style. This is the `completion` bullet.
+
+   Plain lines, not a Rich `Progress` bar, are used intentionally. An
+   earlier design used `rich.progress.Progress` with a lazy `TaskID` and
+   a `transient=False` bar. That design produced subtle rendering errors
+   on three edge cases: invalid `--vocab-size` left a half-initialized
+   task behind when `train_bpe` raised before emitting any event;
+   zero-merge runs (`--vocab-size 256` or an empty corpus) either
+   flashed a `0/N` bar or rendered nothing at all; early-stop runs
+   fought with `remove_task` and total-shrinking. Plain `console.print`
+   lines sidestep every edge case while still rendering beautifully
+   through the themed console.
+
+3. A **completion panel** after the lifecycle lines, titled
+   `"Training complete"`, containing the corpus bytes, requested vocab
+   size, actual mergeable vocab size, special-token count, elapsed ms,
+   and the saved path. Rendered via `render_kv_box` with a green
+   border.
+
+Rules for this surface:
+
+- Every stderr render must go through the shared `Console` from `_ui.py`
+  (the panels via `render_kv_box` and `render_error`, the lifecycle
+  lines via `console.print`). No Rich output may be constructed against
+  `stdout` or the default console.
+- No bare `print()` calls anywhere. The panels, the lifecycle lines via
+  `console.print`, and the error surface are the only stderr rendering
+  paths.
+- No JSON for any progress event. The stdout contract in Section 5 is
+  the only JSON surface.
+- Do not reintroduce a live `Progress` bar. The three lifecycle lines
+  are the contract. If richer mid-training feedback is ever needed,
+  revisit this section first.
+
+Tests that assert on the progress surface should match stable text that
+appears in the rendered output regardless of terminal width, ANSI escape
+presence, or timing. The recommended substrings are:
+
+- `"Training started"` — appears on the start lifecycle line (and
+  nowhere else), so it is the cleanest signal that the start event was
+  emitted.
+- `"Training complete"` — appears both on the complete lifecycle line
+  and in the completion-panel title. Presence confirms the run reached
+  completion.
+- `"Training merges"` — appears on each per-100 merge line. Presence
+  confirms the mid-training event fired at least once; absence is
+  normal for runs that completed fewer than 100 merges.
+- Human-readable field labels from the completion panel such as
+  `"Corpus bytes"`, `"Actual mergeable vocab size"`, `"Elapsed"`, and
+  `"Saved to"`.
+
+Do not assert on exact ANSI byte sequences, panel border characters,
+semantic style names, or elapsed timings — those are unstable across
+terminals, Rich versions, and run-to-run timing.
 
 ---
 
@@ -152,55 +221,63 @@ The callback is threaded through internal functions only.
 
 ### Internal trainer function signature
 
-In `src/bpetite/_trainer.py`, the internal training entry point accepts an
-optional callback:
+In `src/bpetite/_trainer.py`, the internal training entry point is
+`train_bpe` and accepts an optional progress callback via the keyword-only
+`progress` parameter:
 
 ```python
-from typing import Callable
+from bpetite._trainer import ProgressCallback, ProgressEvent, train_bpe
 
-def _run_training(
+def train_bpe(
     corpus: str,
     vocab_size: int,
-    progress_callback: Callable[[int, int], None] | None = None,
-) -> tuple[dict[int, bytes], list[tuple[int, int]], dict[str, int]]:
-    ...
+    *,
+    progress: ProgressCallback | None = None,
+) -> TrainerResult: ...
 ```
 
-The callback signature is `(merges_done: int, target_merges: int) -> None`.
-The caller (CLI) provides the callback; the library default is `None`.
+The callback signature is `Callable[[ProgressEvent], None]` where
+`ProgressEvent` is a frozen dataclass with three fields:
+
+- `kind: Literal["start", "merge", "complete"]`
+- `merges_completed: int`
+- `merges_planned: int`
+
+`"start"` fires once before the merge loop, `"merge"` fires every 100
+completed merges, and `"complete"` fires once after the loop exits (which
+may include an early stop, leaving `merges_completed < merges_planned`).
 
 ### Wiring in `_cli.py`
 
 ```python
-import sys, time
+import sys
 from bpetite import Tokenizer
-from bpetite._trainer import _run_training  # internal import — CLI only
+from bpetite._trainer import ProgressEvent, train_bpe  # internal — CLI only
 
-def _progress(done: int, total: int) -> None:
-    if done == 0:
-        print(f"Training started: target_merges={total}", file=sys.stderr)
-    elif done % 100 == 0:
-        print(f"Merges completed: {done}", file=sys.stderr)
+def _on_event(event: ProgressEvent) -> None:
+    # Route progress updates to your stderr renderer (Rich Progress bar,
+    # plain stderr prints — whatever the presentation layer calls for).
+    ...
 
-# CLI calls the internal function directly to inject the callback,
-# then constructs a Tokenizer from the returned state.
+result = train_bpe(corpus, vocab_size, progress=_on_event)
+tokenizer = Tokenizer(
+    vocab=dict(result.vocab),
+    merges=list(result.merges),
+    special_tokens=dict(result.special_tokens),
+)
 ```
 
-The public `Tokenizer.train` calls `_run_training` internally with
-`progress_callback=None`. The CLI bypasses the public method and calls
-`_run_training` directly, then wraps the result in a `Tokenizer` instance
-via a private constructor or `load`-equivalent path.
-
-If the `Tokenizer` class has a private `_from_state` classmethod or
-equivalent for constructing from raw vocab/merges/special_tokens, use that.
-If it does not exist yet, add it as an internal helper (underscore-prefixed,
-not part of the public API contract).
+The public `Tokenizer.train` calls `train_bpe` internally with
+`progress=None`. The CLI bypasses `Tokenizer.train`, calls `train_bpe`
+directly with a callback, and then constructs a `Tokenizer` via the
+existing `__init__` which already accepts the raw vocab/merges/special-token
+state — no separate `_from_state` classmethod is required.
 
 ### Why the callback cannot go on `Tokenizer.train`
 
-FR-30 enumerates exactly five public methods. Adding `progress_callback` to
-`Tokenizer.train` would change the public API contract. The CLI is the only
-caller that needs progress output; the library should remain clean.
+FR-30 enumerates exactly five public methods. Adding a `progress` parameter
+to `Tokenizer.train` would change the public API contract. The CLI is the
+only caller that needs progress output; the library should remain clean.
 
 ---
 
@@ -333,8 +410,15 @@ assert len(result.stderr) > 0        # error message is on stderr
 - `decode` unknown token ID: returncode nonzero, stdout empty.
 - `decode` token sequence producing invalid UTF-8: returncode nonzero,
   stdout empty.
-- `train` progress lines appear on stderr (check `"Merges"` or equivalent
-  substring in stderr when training completes at least one merge).
+- `train` progress surface appears on stderr. Assert that stderr contains
+  both `"Training started"` (from the start lifecycle line, confirming
+  the start event fired) and `"Training complete"` (from the complete
+  lifecycle line and the completion panel title, confirming the run
+  reached the end) after a successful run. These two substrings are the
+  contract-level evidence that start and completion progress updates
+  appeared on stderr. Do not assert on ANSI escape sequences, panel
+  border glyphs, semantic style names, or elapsed timings — those are
+  unstable across terminals and Rich versions.
 - `encode` output uses compact separators (no spaces in JSON array).
 
 ---
@@ -352,5 +436,5 @@ Run through this mentally before calling a CLI implementation done:
 - [ ] `--force` maps to `overwrite=args.force` on `save`.
 - [ ] All known exception types are caught and result in `sys.exit(1)`.
 - [ ] argparse errors exit with code 2 (default, do not override).
-- [ ] `progress_callback` is not on `Tokenizer.train`'s public signature.
-- [ ] CLI imports `_run_training` from `bpetite._trainer` for callback wiring.
+- [ ] `progress` is not on `Tokenizer.train`'s public signature.
+- [ ] CLI imports `train_bpe` and `ProgressEvent` from `bpetite._trainer` for callback wiring.
