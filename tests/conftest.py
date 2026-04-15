@@ -34,6 +34,16 @@ def invalid_utf8_path() -> Path:
 
 
 @pytest.fixture(scope="session")
+def tiny_corpus_path() -> Path:
+    """Return the filesystem path to ``tests/fixtures/tiny.txt``.
+
+    CLI subprocess tests need the actual file path (for ``--input``),
+    not the decoded string content.
+    """
+    return _FIXTURES_DIR / "tiny.txt"
+
+
+@pytest.fixture(scope="session")
 def trained_tokenizer(tiny_corpus: str) -> Tokenizer:
     """Return a tokenizer trained on the tiny corpus with ``vocab_size=260``.
 
