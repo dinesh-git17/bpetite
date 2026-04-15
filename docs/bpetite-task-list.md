@@ -580,11 +580,13 @@ Prove persistence correctness and satisfy the PRD determinism release requiremen
 
 ---
 
-## Phase 3: Encode, Decode, and Public API
+## ~~Phase 3: Encode, Decode, and Public API~~
+
+> **Phase complete 2026-04-15.** All four tasks merged; see individual task headings and the Phase 3 Exit Gate for details.
 
 **Goal:** Implement the end-to-end tokenizer behavior and prove `decode(encode(text)) == text` for all required input classes.
 
-### Task 3-1: Implement the Encoder
+### ~~Task 3-1: Implement the Encoder~~
 
 #### Objective
 
@@ -619,7 +621,7 @@ Implement encoding with exact special-token extraction, canonical pre-tokenizati
 
 - Claude Code
 
-### Task 3-2: Implement the Decoder
+### ~~Task 3-2: Implement the Decoder~~
 
 #### Objective
 
@@ -651,7 +653,7 @@ Implement decoding against the stored vocabulary with strict UTF-8 behavior.
 
 - Claude Code
 
-### Task 3-3: Implement the Public `Tokenizer` API
+### ~~Task 3-3: Implement the Public `Tokenizer` API~~
 
 #### Objective
 
@@ -690,7 +692,7 @@ Wire the trainer, encoder, decoder, and persistence layer into the exact public 
 
 - Claude Code
 
-### Task 3-4: Add Roundtrip and Public API Tests
+### ~~Task 3-4: Add Roundtrip and Public API Tests~~
 
 #### Objective
 
@@ -742,7 +744,9 @@ Prove end-to-end correctness using the public API only.
 
 - Claude Code
 
-### Phase 3 Exit Gate
+### ~~Phase 3 Exit Gate~~
+
+> **Closed 2026-04-15 (PR #29 merged).** All three bullets satisfied: the public `Tokenizer` API landed in PR #28 (Task 3-3), the 15-case roundtrip matrix and 30-case save/load parity run landed in PR #29 (Task 3-4), and every assertion flows through the public API only (no internal imports in `tests/test_roundtrip.py`).
 
 - The public `Tokenizer` API exists and matches the PRD.
 - All roundtrip fixtures pass.
