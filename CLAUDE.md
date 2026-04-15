@@ -83,7 +83,7 @@ Do not skip any. Do not treat a subset as sufficient.
 - Internal modules use underscore prefix (`_trainer.py`, `_encoder.py`, `_persistence.py`, `_cli.py`).
 - The only public export is `Tokenizer`. Internal modules are not part of the public API.
 - `pyproject.toml` is the single source for package and tool configuration.
-- Core library has one runtime dependency beyond stdlib: `regex`. No C extensions, no Rust, no external tokenizer libraries.
+- The project has two runtime dependencies beyond stdlib: `regex` (pre-tokenizer) and `rich` (CLI presentation layer only, stderr-only). `rich` must never be imported from the core algorithm or public `Tokenizer` path. No C extensions, no Rust, no external tokenizer libraries.
 
 ## Testing
 
@@ -112,6 +112,7 @@ Skills live in `.claude/skills/`. These are mandatory at their defined triggers 
 | `bpe-algorithm`       | Working on `_trainer.py`, `_encoder.py`, or related tests                 | BPE behavioral contract: pair counting, tie-breaking, merge application          |
 | `artifact-schema`     | Working on `_persistence.py` or `test_persistence.py`                     | JSON schema v1, atomic save, loader validation                                   |
 | `cli-contract`        | Working on `_cli.py` or `test_cli.py`                                     | stdout/stderr discipline, exit codes, argparse patterns                          |
+| `rich-cli`            | Visual/UX work on `_cli.py`: Rich output, progress, panels, tracebacks    | Rich-only presentation rules: themes, progress bars, panels, errors              |
 | `pytest-conventions`  | Writing or editing any file in `tests/`                                   | Naming, parametrize, fixture patterns, import mode                               |
 | `task-executor`       | Starting any task from the bpetite task list                              | Read task → confirm deps → implement → quality gate → verify acceptance criteria |
 | `commitall`           | User runs `/commitall` or any intent to commit working changes            | Audit working tree → draft Conventional Commits message → hand off → verify      |

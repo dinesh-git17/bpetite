@@ -16,7 +16,7 @@ If this document conflicts with the PRD, the PRD wins.
 - Python 3.12 is the only supported interpreter for v1.
 - macOS and Linux are the only supported execution targets for v1.
 - Core algorithm code must remain pure Python.
-- `regex` is the only runtime dependency beyond the standard library.
+- `regex` and `rich` are the only runtime dependencies beyond the standard library. `regex` powers the pre-tokenizer; `rich` powers the CLI presentation layer (stderr-only) and must never be imported from the core algorithm path.
 - Development dependencies must be declared as local development dependencies, not published extras.
 - No task may introduce normalization, case folding, prefix-space insertion, or whitespace trimming anywhere in the pipeline.
 - `vocab_size` always refers to mergeable vocabulary size and excludes reserved special tokens.

@@ -60,7 +60,7 @@ These rules come directly from the task list's Non-Negotiable Implementation Rul
 
 - Python 3.12 only. macOS and Linux only.
 - Core algorithm code must remain pure Python. No Rust, no C extensions, no external tokenizer libraries.
-- `regex` is the only permitted runtime dependency beyond the standard library.
+- `regex` and `rich` are the only permitted runtime dependencies beyond the standard library (`rich` is scoped to the CLI presentation layer and must never appear in the core algorithm import path).
 - No normalization, case folding, prefix-space insertion, or whitespace trimming anywhere in the pipeline.
 - `vocab_size` always refers to mergeable vocabulary size, excluding reserved special tokens.
 - The only reserved special token in v1 is the exact literal `<|endoftext|>`.

@@ -155,7 +155,7 @@ Each file is created (or primarily modified) by a specific task. Before editing 
 
 ### Dependencies
 
-- `regex` is the only runtime dependency beyond the standard library.
+- `regex` and `rich` are the only runtime dependencies beyond the standard library. `regex` powers the pre-tokenizer; `rich` powers the CLI presentation layer (stderr-only) and does not touch the core algorithm or the public `Tokenizer` API.
 - `tiktoken` is declared as a dev-only dependency. It must never appear in the core library or CLI runtime import path.
 
 ### Typing and bytes
