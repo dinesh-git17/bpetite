@@ -27,6 +27,9 @@ Determinism is load-bearing. Serialization uses ``sort_keys=True`` and
 compact separators so that the same in-memory tokenizer state always
 produces identical file bytes. This is the invariant the Phase 2
 determinism gate tests against.
+
+See ``docs/phase-2/persistence.md`` for the full schema walkthrough,
+loader validation checklist, and failure-mode table.
 """
 
 import json
@@ -102,8 +105,10 @@ def save(
         raise FileExistsError(msg)
 
     artifact = _build_artifact(vocab, merges, special_tokens)
+    # sort_keys=True + compact separators make save byte-deterministic.
     payload = json.dumps(artifact, sort_keys=True, separators=(",", ":"))
 
+    # Temp file must share a filesystem with dest so replace() is atomic.
     fd, tmp_name = tempfile.mkstemp(dir=str(dest.parent), suffix=".tmp")
     tmp_path = Path(tmp_name)
     try:
