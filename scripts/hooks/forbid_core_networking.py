@@ -2,9 +2,9 @@
 """Forbid direct networking imports in ``src/bpetite/``.
 
 Per bpetite PRD: the core library and CLI perform no network calls. The only
-networked helper is ``scripts/download_data.sh`` (to be ported to
-``scripts/download_corpus.py`` in PRD task 4-3), which lives outside the
-runtime path and is exempt from this check by scope.
+networked helper is ``scripts/download_corpus.py`` (TinyShakespeare demo
+corpus fetcher, landed in PRD task 4-3), which lives outside the runtime
+path and is exempt from this check by scope.
 
 **Enforcement scope.** The check is AST-based and catches only direct
 ``import`` and ``from ... import`` statements against the denylist. It does
