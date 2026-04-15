@@ -27,6 +27,7 @@ docs = [
     "markdown-it-py",
     "mdit-py-plugins",
     "pygments",
+    "types-Pygments",
     "jinja2",
     "python-frontmatter",
 ]
