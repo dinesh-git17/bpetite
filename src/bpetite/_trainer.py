@@ -21,6 +21,20 @@ The trainer never special-cases ``<|endoftext|>`` during training. If
 the literal appears in the corpus it flows through pre-tokenization and
 merging like any other text; reservation happens only after merge
 training completes.
+
+Example:
+    A trace of the first merge step for
+    ``train_bpe("ab ab ab", vocab_size=258)``:
+
+    * pre-tokenization yields ``[b"ab", b" ab", b" ab"]``;
+    * unique pre-tokens with multiplicity:
+      ``{(97, 98): 1, (32, 97, 98): 2}``;
+    * pair counts weighted by multiplicity:
+      ``{(97, 98): 3, (32, 97): 2}``;
+    * the best pair is ``(97, 98)`` (count 3, no tie), minted as
+      token id ``256`` with bytes ``b"ab"``.
+
+    See ``docs/phase-2/core-algorithm.md`` for the full walkthrough.
 """
 
 from collections import Counter
