@@ -1,4 +1,4 @@
-// bpetite docs — tiny runtime. Code-block copy + smooth anchor jumps.
+// bpetite docs: tiny runtime. Code-block copy + smooth anchor jumps.
 // Kept pure and dependency-free so the strict CSP (script-src 'self') holds.
 (() => {
   "use strict";

@@ -7,17 +7,17 @@ category: Phase 3
 published: true
 ---
 
-# Roundtrip Suite — 55 tests proving `decode(encode(text)) == text` through the public API
+# Roundtrip Suite: 55 tests proving `decode(encode(text)) == text` through the public API
 
 ## TL;DR
 
 - Fifty-five tests across seven functions in `tests/test_roundtrip.py` prove
   FR-17 through FR-26 through the public `Tokenizer` API only; no internal
   module is imported, and no token id is asserted directly.
-- Fifteen parametrized cases cover every required input class — empty,
+- Fifteen parametrized cases cover every required input class: empty,
   whitespace, ASCII, emoji, CJK, Arabic, mixed punctuation, the literal
   `<|endoftext|>` in three configurations, and the three partial-special
-  variants — and the same list drives both the live-tokenizer run and the
+  variants. The same list drives both the live-tokenizer run and the
   save/load parity run.
 - Two shared fixtures keep the suite under 0.05 seconds: a session-scoped
   `trained_tokenizer` executes the training run exactly once per pytest
@@ -85,8 +85,9 @@ entry to this list, not writing a new test function.
 | `test_post_load_roundtrip`                       | 15    | Full roundtrip invariant holds through the save/load boundary for every case (FR-25 + FR-26)       |
 | `test_save_and_load_returns_tokenizer_instance`  | 1     | `isinstance(Tokenizer.load(path), Tokenizer)` sanity check                                         |
 
-Fifteen parametrize cases × three parametrized functions + ten scalar tests
-= 55 tests, matching `uv run pytest tests/test_roundtrip.py -v` → `55 passed`.
+Fifteen parametrized cases across three parametrized functions, plus ten
+scalar tests, give 55 tests. That matches
+`uv run pytest tests/test_roundtrip.py -v` → `55 passed`.
 
 ### The two shared fixtures
 
@@ -198,24 +199,24 @@ but fail `test_post_load_encode_parity`.
 | ---------------------------------------------------------------------------- | ------------------------ | ----- | --------------------------------------------------------------------------- |
 | Any roundtrip case does not return the original string                       | `AssertionError`         | FR-25 | `test_roundtrip[<label>-...]` for the offending case                        |
 | Save/load produces a tokenizer whose encode output differs from the source   | `AssertionError`         | FR-26 | `test_post_load_encode_parity[<label>-...]`                                 |
-| `tests/__init__.py` is accidentally created                                  | `ImportError` at collect | —     | No automated test — pytest will fail to collect the whole suite             |
-| A new roundtrip case is added without also covering the save/load parity run | Missing coverage         | FR-26 | Code review — the three parametrized functions must share `ROUNDTRIP_CASES` |
-| Internal module imported in `test_roundtrip.py`                              | —                        | —     | Code review — this file is public-API-only by contract                      |
+| `tests/__init__.py` is accidentally created                                  | `ImportError` at collect | n/a   | No automated test; pytest will fail to collect the whole suite              |
+| A new roundtrip case is added without also covering the save/load parity run | Missing coverage         | FR-26 | Code review: the three parametrized functions must share `ROUNDTRIP_CASES`  |
+| Internal module imported in `test_roundtrip.py`                              | n/a                      | n/a   | Code review: this file is public-API-only by contract                       |
 
 ## Related reading
 
-- [Public Tokenizer API](public-api.md) — the five methods the suite
+- [Public Tokenizer API](public-api.md): the five methods the suite
   exercises; the delegation-only contract this suite verifies end-to-end.
-- [Encode and Decode](encode-decode.md) — the algorithm underneath every
+- [Encode and Decode](encode-decode.md): the algorithm underneath every
   roundtrip assertion; the per-rank merge and strict-UTF-8 decode paths.
-- [Phase 2 Fixtures](../phase-2/fixtures.md) — the `tiny.txt` corpus
+- [Phase 2 Fixtures](../phase-2/fixtures.md): the `tiny.txt` corpus
   consumed by the session-scoped `trained_tokenizer` fixture; byte
   invariants and the whitespace-preservation rule.
-- [Phase 2 Persistence](../phase-2/persistence.md) — the atomic save and
+- [Phase 2 Persistence](../phase-2/persistence.md): the atomic save and
   strict load that `test_post_load_*` exercises through the public API.
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-17, FR-21, FR-22,
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-17, FR-21, FR-22,
   FR-23, FR-25, FR-26.
-- [`tests/test_roundtrip.py`](../../tests/test_roundtrip.py) — the full
+- [`tests/test_roundtrip.py`](../../tests/test_roundtrip.py): the full
   55-test suite.
-- [`tests/conftest.py`](../../tests/conftest.py) — the session-scoped
+- [`tests/conftest.py`](../../tests/conftest.py): the session-scoped
   `trained_tokenizer` fixture and the existing fixture surface it joins.

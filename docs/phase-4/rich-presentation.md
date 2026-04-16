@@ -7,7 +7,7 @@ category: Phase 4
 published: true
 ---
 
-# Rich Presentation Layer — shared stderr console, themed panels, lifecycle lines
+# Rich Presentation Layer: shared stderr console, themed panels, lifecycle lines
 
 ## TL;DR
 
@@ -63,7 +63,7 @@ and nothing else.
 
 ### The shared `Console`
 
-The single load-bearing line in the entire presentation layer:
+The single most important line in the entire presentation layer:
 
 ```python
 # src/bpetite/_ui.py
@@ -153,7 +153,7 @@ def render_kv_box(
     render_box(_kv_table(rows), title=title, border_style=border_style)
 ```
 
-The `Text(value)` wrap in `_kv_table` is load-bearing. Values passed to the CLI
+The `Text(value)` wrap in `_kv_table` is required. Values passed to the CLI
 frequently carry user-supplied paths like `data/tinyshakespeare-[test].json` or free-form
 text containing literal `[` `]`. Without the wrap, Rich's markup parser would see the
 brackets as style tags and either rewrite the rendered output silently or raise
@@ -167,8 +167,8 @@ full-width frame.
 ### `render_error` and markup escape
 
 Error panels are the one place the CLI renders user-supplied text into a markup-bearing
-template. Every source of user-supplied content — paths, exception strings, model
-artifact JSON values — is escaped through `rich.markup.escape` before interpolation:
+template. Every source of user-supplied content, including paths, exception strings,
+and model artifact JSON values, is escaped through `rich.markup.escape` before interpolation:
 
 ```python
 # src/bpetite/_ui.py
@@ -194,7 +194,7 @@ def render_error(title: str, message: str, hint: str | None = None) -> None:
 and `hint` are escaped because they carry dynamic content. A model artifact path
 containing `[fancy]` characters can reach `message`; without the escape, Rich would
 interpret `[fancy]` as a style tag, fail to find it in the theme, and raise
-`MarkupError` at render time — turning an already-failing CLI run into a crash with a
+`MarkupError` at render time. That would turn an already-failing CLI run into a crash with a
 Python traceback on stderr.
 
 ### The interactivity gate
@@ -243,7 +243,7 @@ sys.stdout.write(json.dumps(ids, separators=(",", ":")) + "\n")
 Under `subprocess.run(stdout=PIPE)`, `sys.stdout.isatty()` returns `False`, `interactive`
 evaluates to `False`, and both panels are skipped. Stderr receives nothing. Only the
 single `sys.stdout.write` at the end runs, producing a clean JSON array the subprocess
-test harness can parse and assert on. `train` does not gate its panels this way — the
+test harness can parse and assert on. `train` does not gate its panels this way. The
 train banner and both panels always render because the train stdout contract is always
 the one-line JSON summary and the stderr output is not asserted against byte-equality
 in the suite.
@@ -260,7 +260,7 @@ straightforward choice is `rich.progress.Progress` with a determinate bar whose 
 equals `merges_planned`. That approach was attempted first and failed against three
 independent edge cases.
 
-**Edge case 1 — invalid `--vocab-size`.** If the caller passes `--vocab-size 100`,
+**Edge case 1: invalid `--vocab-size`.** If the caller passes `--vocab-size 100`,
 `train_bpe` raises `ValueError` before emitting any `ProgressEvent`. A `Progress`
 instance started before the trainer call and waiting to be advanced by the first event
 would be left half-initialized: the live display has allocated a `TaskID` but nothing
@@ -269,14 +269,14 @@ has driven the bar forward. Cleaning up requires wrapping the entire trainer cal
 error rendering inside the Rich live-display context and produces confused layering
 (the error panel renders before the `Progress` display exits).
 
-**Edge case 2 — zero-merge runs.** `--vocab-size 256` plans zero merges.
+**Edge case 2: zero-merge runs.** `--vocab-size 256` plans zero merges.
 `merges_planned == 0`. A `Progress` bar with a total of zero is a Rich edge case:
 depending on the render timing and terminal size, it either flashes `0/0` briefly
 before the run completes or renders nothing at all. Either way the lifecycle events
 fire in the wrong visual order (`start` shows an empty bar, `complete` replaces it
 instantly), so the reader sees no evidence that training actually happened.
 
-**Edge case 3 — early-stop runs.** Training a corpus whose distinct byte-pair space
+**Edge case 3: early-stop runs.** Training a corpus whose distinct byte-pair space
 runs out before reaching `vocab_size` triggers `if not pair_counts: break` in
 `_trainer.py`. The loop exits early with `merges_completed < merges_planned`. A
 `Progress` bar that has been advancing by individual merges is stuck at a non-full
@@ -327,14 +327,14 @@ needed, start by reading this section and the three edge cases above before touc
 A `train` invocation against `data/tinyshakespeare.txt` at `vocab_size=512` produces
 the following stderr output in order:
 
-1. **Banner** (if the terminal is fully interactive and at least 95 columns wide) —
+1. **Banner** (if the terminal is fully interactive and at least 95 columns wide):
    the ASCII art from `_banner.txt`, magenta, centered.
-2. **Configuration panel** — a rounded cyan Panel titled `Training` with four rows:
+2. **Configuration panel:** a rounded cyan Panel titled `Training` with four rows:
    `Input`, `Vocab size`, `Output`, `Force overwrite`.
-3. **Training started lifecycle line** — `Training started: planned=256`, cyan.
-4. **Training merges lifecycle lines** — `Training merges: 100 / 256`, then `Training merges: 200 / 256`. Cyan. One line every 100 completed merges.
-5. **Training complete lifecycle line** — `Training complete: merges=256`, bold green.
-6. **Completion panel** — a rounded green Panel titled `Training complete` with six
+3. **Training started lifecycle line:** `Training started: planned=256`, cyan.
+4. **Training merges lifecycle lines:** `Training merges: 100 / 256`, then `Training merges: 200 / 256`. Cyan. One line every 100 completed merges.
+5. **Training complete lifecycle line:** `Training complete: merges=256`, bold green.
+6. **Completion panel:** a rounded green Panel titled `Training complete` with six
    rows: `Corpus bytes`, `Requested vocab size`, `Actual mergeable vocab size`,
    `Special tokens`, `Elapsed`, `Saved to`.
 
@@ -350,7 +350,7 @@ five-key JSON summary on one line with a trailing newline.
 | `render_error` without `markup_escape` on message/hint          | User-supplied exception strings with `[...]` execute as markup; misleading colored output or `MarkupError` | Code-level constraint at `_ui.py:147-149`                                     |
 | Banner rendered in non-interactive mode                         | Subprocess-captured stderr contains unexpected ASCII-art bytes; byte-equality assertions break             | `is_fully_interactive()` + `banner_enabled()` gate at `_ui.py:78-88`          |
 | Decorative encode/decode panels rendered under `subprocess.run` | Stderr bytes appear in captured output; wrappers that treat stderr as a warning signal regress             | `is_fully_interactive()` gate in `_cmd_encode`/`_cmd_decode`                  |
-| Live `rich.progress.Progress` reintroduced                      | Zero-merge, early-stop, and invalid-vocab edge cases render incorrectly or crash                           | Design decision documented above; no automated test — enforced by code review |
+| Live `rich.progress.Progress` reintroduced                      | Zero-merge, early-stop, and invalid-vocab edge cases render incorrectly or crash                           | Design decision documented above; no automated test, enforced by code review  |
 
 ### Silent failure modes called out by name
 
@@ -370,17 +370,17 @@ narrow-terminal users will see the banner suddenly start rendering incorrectly.
 
 ## Related reading
 
-- [CLI Contract](cli-contract.md) — the channel discipline the shared `Console`
+- [CLI Contract](cli-contract.md): the channel discipline the shared `Console`
   enforces structurally; the progress-callback wiring that produces the three
   lifecycle lines documented above.
-- [Phase 3 Public Tokenizer API](../phase-3/public-api.md) — the five-method contract
+- [Phase 3 Public Tokenizer API](../phase-3/public-api.md): the five-method contract
   the CLI wraps; the reason `_cmd_train` cannot attach the progress callback to
   `Tokenizer.train` and must go through internal `train_bpe` instead.
-- [`src/bpetite/_ui.py`](../../src/bpetite/_ui.py) — full presentation-layer source,
+- [`src/bpetite/_ui.py`](../../src/bpetite/_ui.py): full presentation-layer source,
   ~160 lines.
-- [`src/bpetite/_banner.txt`](../../src/bpetite/_banner.txt) — ASCII art; any edit
+- [`src/bpetite/_banner.txt`](../../src/bpetite/_banner.txt): ASCII art; any edit
   must be paired with a review of `_BANNER_MIN_COLUMNS` in `_ui.py`.
-- [`src/bpetite/_cli.py`](../../src/bpetite/_cli.py) — every call site for the panel
+- [`src/bpetite/_cli.py`](../../src/bpetite/_cli.py): every call site for the panel
   helpers, the `_train_with_progress` callback closure.
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-33, FR-34 (channel discipline
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-33, FR-34 (channel discipline
   that the presentation layer reinforces structurally).
