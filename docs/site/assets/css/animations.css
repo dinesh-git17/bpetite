@@ -1,0 +1,171 @@
+/* Load and scroll-reveal animations for the landing page.
+   All motion is gated behind prefers-reduced-motion so users who
+   disable animations see the page in its instant-render state. */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ---- keyframes ---- */
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-up-lg {
+    from {
+      opacity: 0;
+      transform: translateY(32px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes rule-extend {
+    from {
+      transform: scaleX(0) translateY(-0.4em);
+    }
+    to {
+      transform: scaleX(1) translateY(-0.4em);
+    }
+  }
+
+  /* ---- above-the-fold entrance (pure CSS, no JS) ---- */
+
+  .nav {
+    animation: fade-in 500ms var(--ease-out) both;
+  }
+
+  .page-landing .hero__eyebrow {
+    animation: fade-up 600ms var(--ease-out) 100ms both;
+  }
+
+  .page-landing .hero__title {
+    animation: fade-up 700ms var(--ease-out) 200ms both;
+  }
+
+  .page-landing .hero__title-rule {
+    transform-origin: left center;
+    animation: rule-extend 500ms var(--ease-out) 500ms both;
+  }
+
+  .page-landing .hero__tag {
+    animation: fade-up 600ms var(--ease-out) 400ms both;
+  }
+
+  .page-landing .hero__body {
+    animation: fade-up 600ms var(--ease-out) 520ms both;
+  }
+
+  .page-landing .hero__meta {
+    animation: fade-up 600ms var(--ease-out) 640ms both;
+  }
+
+  .page-landing .hero::before {
+    animation: fade-in 800ms var(--ease-out) 800ms both;
+  }
+
+  .page-landing .hero__terminal {
+    animation: fade-up-lg 800ms var(--ease-out) 400ms both;
+  }
+
+  /* ---- scroll reveals (JS adds .is-visible via IntersectionObserver) ---- */
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 600ms var(--ease-out),
+      transform 600ms var(--ease-out);
+    will-change: opacity, transform;
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* delayed reveal for secondary content within the same section */
+  .reveal-delay {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 600ms var(--ease-out) 80ms,
+      transform 600ms var(--ease-out) 80ms;
+    will-change: opacity, transform;
+  }
+
+  .reveal-delay.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ---- cascading children (invariant rows, doc list rows) ---- */
+
+  .reveal-stagger > * {
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 500ms var(--ease-out),
+      transform 500ms var(--ease-out);
+  }
+
+  .reveal-stagger.is-visible > * {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .reveal-stagger.is-visible > :nth-child(1) {
+    transition-delay: 0ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(2) {
+    transition-delay: 60ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(3) {
+    transition-delay: 120ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(4) {
+    transition-delay: 180ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(5) {
+    transition-delay: 240ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(6) {
+    transition-delay: 300ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(7) {
+    transition-delay: 360ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(8) {
+    transition-delay: 420ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(9) {
+    transition-delay: 480ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(10) {
+    transition-delay: 540ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(11) {
+    transition-delay: 600ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(12) {
+    transition-delay: 660ms;
+  }
+  .reveal-stagger.is-visible > :nth-child(n + 13) {
+    transition-delay: 700ms;
+  }
+}
