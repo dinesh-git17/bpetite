@@ -398,7 +398,7 @@ def render_landing(
     why_html = render_content_fragment(md, CONTENT_DIR / "why.md")
     ctx = _base_context(build_sha, build_date) | {
         "base": ".",
-        "page_title": f"{SITE_TITLE} — {SITE_DESCRIPTION}",
+        "page_title": f"{SITE_TITLE} | {SITE_DESCRIPTION}",
         "overview_html": overview_html,
         "why_html": why_html,
         "invariants": INVARIANTS,
@@ -420,7 +420,7 @@ def render_doc_pages(
     for page in pages:
         ctx = _base_context(build_sha, build_date) | {
             "base": "..",
-            "page_title": f"{page.title} — {SITE_TITLE}",
+            "page_title": f"{page.title} | {SITE_TITLE}",
             "page_description": page.description or SITE_DESCRIPTION,
             "doc": _doc_for_template(page),
             "toc": [
@@ -442,7 +442,7 @@ def render_not_found(
     """Render a styled 404 page."""
     ctx = _base_context(build_sha, build_date) | {
         "base": ".",
-        "page_title": f"not found — {SITE_TITLE}",
+        "page_title": f"not found | {SITE_TITLE}",
     }
     body = (
         '<section class="section">'

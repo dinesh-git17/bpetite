@@ -7,7 +7,7 @@ category: Phase 3
 published: true
 ---
 
-# Encode and Decode — special-token extraction, per-rank merge passes, strict UTF-8 reconstruction
+# Encode and Decode: special-token extraction, per-rank merge passes, strict UTF-8 reconstruction
 
 ## TL;DR
 
@@ -78,7 +78,7 @@ published: true
           emit tokens into the final id sequence
 ```
 
-Two design choices from this pipeline deserve explicit calls out. First,
+Two design choices matter here. First,
 special-token extraction happens **before** pre-tokenization, not inside it.
 Keeping extraction outside the pre-tokenizer means the canonical GPT-2
 regex never sees `<|endoftext|>` at all, so the literal cannot be
@@ -132,7 +132,7 @@ Trace step by step:
    `[0:2] = "ab"` came before. It advances past the literal to position 15
    and treats the remainder `"ab"` as the next segment.
 2. **Segment pre-tokenization.** For the first segment `"ab"`,
-   `pretokenize("ab")` returns `[b"ab"]` — one chunk. Same for the trailing
+   `pretokenize("ab")` returns `[b"ab"]`, one chunk. Same for the trailing
    `"ab"` segment.
 3. **Merge application on the first chunk.** Start from the base-byte
    id list `[97, 98]`. Rank 0 is `(97, 98)` → id `256`; the full pass
@@ -170,7 +170,7 @@ partial = tok.encode("<|endoftext")
 assert tok.decode(partial) == "<|endoftext"
 ```
 
-At position 0, `"<|endoftext".startswith("<|endoftext|>")` is `False` — the
+At position 0, `"<|endoftext".startswith("<|endoftext|>")` is `False`. The
 input is strictly shorter than the literal. Special-token extraction makes
 no match at any position in the 11-character input. The whole string flows
 into `_encode_ordinary`, which pre-tokenizes it via the canonical regex
@@ -216,7 +216,7 @@ No branching, no pre-loops, no special-case for the empty sequence
 `KeyError` propagates out of the generator expression when an id is
 missing from `vocab`. `UnicodeDecodeError` propagates out of the final
 `decode` call when the concatenated bytes are not valid UTF-8. The strict
-mode is explicit — not the Python default — because the PRD requires it
+mode is explicit, not the Python default, because the PRD requires it
 and a silent fallback to `errors="replace"` is the most common silent
 failure for this kind of code.
 
@@ -234,7 +234,7 @@ failure for this kind of code.
 
 ### Silent failure modes called out by name
 
-Three encode/decode bugs are load-bearing silent failures: they pass the
+Three encode/decode bugs are easy to miss: they pass the
 obvious tests and surface only against specific constructions. The
 roundtrip suite pins each one with a dedicated case.
 
@@ -244,14 +244,14 @@ still produces correct output when every pair has at most one match per
 chunk. Inputs where the same pair appears multiple times in a single
 chunk expose it. Any multi-match roundtrip case catches it in the suite;
 the minimal reproducer is a chunk like `[97, 98, 97, 98]` with merge
-`(97, 98)`, which must emit `[256, 256]` in a single pass — not `[256, 97, 98]`.
+`(97, 98)`, which must emit `[256, 256]` in a single pass, not `[256, 97, 98]`.
 
 **Partial-special false match.** An implementation that uses `str.find`
 or a regex for special extraction without bounding the match to the exact
 literal can match `<|endoftext|>` starting inside a partial string like
 `"...<|endoftext|>..."` but also silently against a prefix like
-`"<|endoftext"`. The three partial-special roundtrip cases — prefix,
-suffix, and the shorter `<|endo` — expose this immediately because the
+`"<|endoftext"`. The three partial-special roundtrip cases, prefix,
+suffix, and the shorter `<|endo`, expose this immediately because the
 decoded output would drop the mismatched tail or consume too many
 characters.
 
@@ -260,23 +260,23 @@ characters.
 invalid byte sequences with U+FFFD instead of raising
 `UnicodeDecodeError`. Every valid input still roundtrips, so this bug
 never appears outside the invalid-UTF-8 test. The dedicated case uses
-`decode([0x80])` — a lone continuation byte with no preceding start byte,
+`decode([0x80])`, a lone continuation byte with no preceding start byte,
 which is always invalid UTF-8 regardless of what merges were learned.
 
 ## Related reading
 
-- [Public Tokenizer API](public-api.md) — how `Tokenizer.encode` and
+- [Public Tokenizer API](public-api.md): how `Tokenizer.encode` and
   `Tokenizer.decode` wrap `_encoder.encode` and `_decoder.decode` as
   one-line delegations.
-- [Roundtrip Suite](roundtrip-suite.md) — the full 55-test proof of
+- [Roundtrip Suite](roundtrip-suite.md): the full 55-test proof of
   FR-17 through FR-25 via the public `Tokenizer` API only.
-- [Phase 2 Core Algorithm](../phase-2/core-algorithm.md) — pair counting,
+- [Phase 2 Core Algorithm](../phase-2/core-algorithm.md): pair counting,
   tie-breaking, and the training-time merge semantics that the encoder
   mirrors at inference time.
-- [Phase 2 Persistence](../phase-2/persistence.md) — the vocab and merge
+- [Phase 2 Persistence](../phase-2/persistence.md): the vocab and merge
   list shapes the encoder and decoder consume.
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-16 through FR-25.
-- [`src/bpetite/_encoder.py`](../../src/bpetite/_encoder.py) — full
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-16 through FR-25.
+- [`src/bpetite/_encoder.py`](../../src/bpetite/_encoder.py): full
   encoder implementation including `_encode_ordinary` and `_apply_merge`.
-- [`src/bpetite/_decoder.py`](../../src/bpetite/_decoder.py) — full
+- [`src/bpetite/_decoder.py`](../../src/bpetite/_decoder.py): full
   decoder; ~50 lines, one expression.

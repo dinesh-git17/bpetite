@@ -7,7 +7,7 @@ category: Phase 4
 published: true
 ---
 
-# CLI Contract — stdout/stderr channel discipline, exit codes, JSON output shapes
+# CLI Contract: stdout/stderr channel discipline, exit codes, JSON output shapes
 
 ## TL;DR
 
@@ -40,7 +40,7 @@ published: true
 | FR      | Invariant                                                                                                                                                                    | Consequence if violated                                                                                                                                                       |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-34   | Machine-readable command results are written to `stdout` only. Written via `sys.stdout.write`, never through Rich, never interleaved with stderr content.                    | Downstream scrapers that consume `bpetite encode` output break when stdout contains any bytes other than the JSON array. The contract is byte-exact.                          |
-| FR-33   | CLI errors are written to `stderr` and return non-zero exit codes. Every runtime failure catches a specific exception type and routes through `_fail` to `sys.exit(1)`.      | Uncaught exceptions print a Python traceback to stderr — still on the right channel, but with stack frames leaking internal implementation state.                             |
+| FR-33   | CLI errors are written to `stderr` and return non-zero exit codes. Every runtime failure catches a specific exception type and routes through `_fail` to `sys.exit(1)`.      | Uncaught exceptions print a Python traceback to stderr. The channel is still correct, but stack frames leak internal implementation state.                                    |
 | FR-32   | The CLI exposes the explicit subcommand set `train`, `encode`, `decode`. Subparsers are `required=True`; invoking bare `bpetite` exits with argparse's standard code 2.      | A missing subcommand silently dispatches nothing and exits 0, hiding misconfiguration from CI and shell scripts.                                                              |
 | FR-30   | `Tokenizer.train(corpus, vocab_size)` is the pinned public signature. The progress callback must not be added to this method.                                                | Adding a `progress` keyword argument to the public method rewrites the public API contract; every published artifact and every downstream user pins on the current signature. |
 | (local) | Subprocess tests invoke `Path(sys.executable).parent / "bpetite"` directly, not `uv run bpetite`.                                                                            | A nested `uv run` layer triggers a second venv resolution that can emit stderr warnings, deadlock under certain OS conditions, and slow the suite unnecessarily.              |
@@ -79,8 +79,8 @@ Everywhere else:
 ```
 
 Only the three `sys.stdout.write` sites at the end of each handler ever touch stdout.
-Every other write — configuration panels, progress lines, the completion panel, error
-panels — routes through `_ui.console`, which is a stderr-only `Console`.
+Every other write, including configuration panels, progress lines, the completion panel,
+and error panels, routes through `_ui.console`, which is a stderr-only `Console`.
 
 ### `train` traced end-to-end
 
@@ -131,7 +131,7 @@ write is step 12.
 ### Machine-readable output shapes
 
 The three subcommands each emit exactly one machine-readable payload. The exact shape
-is load-bearing; downstream tooling pins against it.
+matters because downstream tooling pins against it.
 
 **`train`.** A JSON object with five required keys:
 
@@ -304,7 +304,7 @@ operations from running per test:
 - `progress_corpus_path`: writes a deterministic synthetic ~15 KB corpus seeded with
   `random.Random(0xBADC0FFEE)`. 2500 random ASCII words with enough distinct bigrams
   that training to `vocab_size=480` (224 planned merges) completes fully and fires the
-  `"merge"` event at least twice. Ordinary fixtures cannot do this — `tests/fixtures/
+  `"merge"` event at least twice. Ordinary fixtures cannot do this. `tests/fixtures/
 tiny.txt` completes in far fewer than 100 merges and never trips the every-100-merges
   callback branch.
 
@@ -349,7 +349,7 @@ regression where the CLI accidentally prints its summary to both channels.
 
 ### Silent failure modes called out by name
 
-Three bugs are load-bearing silent failures: they pass ordinary tests and surface only
+Three bugs are easy to miss: they pass ordinary tests and surface only
 against specific test shapes. Each is pinned by a dedicated case.
 
 **Every-100-merges branch never fires.** Training at `vocab_size=260` against the
@@ -380,20 +380,20 @@ absent from stderr, catching this class of regression.
 
 ## Related reading
 
-- [Rich Presentation Layer](rich-presentation.md) — the shared stderr `Console`, the
+- [Rich Presentation Layer](rich-presentation.md): the shared stderr `Console`, the
   themed palette, and the full design decision behind plain `console.print` lifecycle
   lines instead of a live `rich.progress.Progress` bar.
-- [Benchmark Harness](benchmark-harness.md) — the `elapsed_ms` trainer span
+- [Benchmark Harness](benchmark-harness.md): the `elapsed_ms` trainer span
   distinction, cross-linked from the `train` JSON summary discussion above.
-- [Phase 3 Public Tokenizer API](../phase-3/public-api.md) — the five-method contract
+- [Phase 3 Public Tokenizer API](../phase-3/public-api.md): the five-method contract
   the CLI wraps; why the CLI bypasses `Tokenizer.train` for the callback-enabled path.
-- [Phase 2 Core Algorithm](../phase-2/core-algorithm.md) — the trainer the CLI drives;
+- [Phase 2 Core Algorithm](../phase-2/core-algorithm.md): the trainer the CLI drives;
   the early-stop behavior that produces `actual_mergeable_vocab_size < requested_vocab_size`.
-- [`README.md`](../../README.md) — user-facing CLI examples with captured real outputs.
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-30, FR-32, FR-33, FR-34, FR-35,
+- [`README.md`](../../README.md): user-facing CLI examples with captured real outputs.
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-30, FR-32, FR-33, FR-34, FR-35,
   FR-36.
-- [`src/bpetite/_cli.py`](../../src/bpetite/_cli.py) — full CLI implementation.
-- [`src/bpetite/_trainer.py`](../../src/bpetite/_trainer.py) — `ProgressEvent` and
+- [`src/bpetite/_cli.py`](../../src/bpetite/_cli.py): full CLI implementation.
+- [`src/bpetite/_trainer.py`](../../src/bpetite/_trainer.py): `ProgressEvent` and
   `train_bpe(corpus, vocab_size, *, progress)`.
-- [`tests/test_cli.py`](../../tests/test_cli.py) — subprocess-level contract tests and
+- [`tests/test_cli.py`](../../tests/test_cli.py): subprocess-level contract tests and
   both session-scoped fixtures.

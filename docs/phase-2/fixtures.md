@@ -7,14 +7,14 @@ category: Phase 2
 published: true
 ---
 
-# Test Fixtures — deterministic inputs for a reproducible test suite
+# Test Fixtures: deterministic inputs for a reproducible test suite
 
 ## TL;DR
 
 - Four fixture files in `tests/fixtures/` provide controlled, byte-exact inputs; every
   content invariant is a repo-wide constraint, not just a test assumption.
 - `unicode.txt` uses U+3000 IDEOGRAPHIC SPACE on its whitespace-only line because the
-  pre-commit hook strips trailing ASCII whitespace — non-ASCII codepoints survive unmodified.
+  pre-commit hook strips trailing ASCII whitespace. Non-ASCII codepoints survive unmodified.
 - The `tiny_corpus` → `trained_state` chain is the backbone of the persistence test suite:
   `tiny.txt` is fixed, the trainer is deterministic, so `trained_state` is byte-identical
   across every test session.
@@ -26,14 +26,14 @@ published: true
 | `tests/fixtures/tiny.txt`         | 212   | Deterministic training target; pangrams repeated five times, ASCII-only, supports up to 44 merges at `vocab_size=300` without early-stopping               |
 | `tests/fixtures/unicode.txt`      | 115   | Multi-script coverage: emoji, CJK, Arabic, a whitespace-only line (U+3000), the `<\|endoftext\|>` literal, and mixed-script text                           |
 | `tests/fixtures/empty.txt`        | 0     | Exactly zero bytes; exercises the empty-corpus early-stop path in the trainer (FR-11)                                                                      |
-| `tests/fixtures/invalid_utf8.bin` | 4     | Bytes `\xff\xfe\xfd\x0a` — the first byte (`0xff`) is an invalid UTF-8 start byte; reading with `encoding="utf-8"` raises `UnicodeDecodeError` immediately |
-| `tests/conftest.py`               | —     | Session-scoped pytest fixtures that surface the four files to the test suite                                                                               |
+| `tests/fixtures/invalid_utf8.bin` | 4     | Bytes `\xff\xfe\xfd\x0a`: the first byte (`0xff`) is an invalid UTF-8 start byte; reading with `encoding="utf-8"` raises `UnicodeDecodeError` immediately |
+| `tests/conftest.py`               | n/a   | Session-scoped pytest fixtures that surface the four files to the test suite                                                                              |
 
 ## Key invariants
 
 | Fixture              | Invariant                                                                        | Consequence if violated                                                                                                                                                              |
 | -------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `empty.txt`          | Exactly 0 bytes — not one byte, not a newline                                    | A 1-byte file (e.g. containing `\n`) does not test the truly empty path; `empty_corpus` would be `"\n"` and the trainer would pre-tokenize it to a non-empty chunk list              |
+| `empty.txt`          | Exactly 0 bytes, not one byte and not a newline                                  | A 1-byte file (e.g. containing `\n`) does not test the truly empty path; `empty_corpus` would be `"\n"` and the trainer would pre-tokenize it to a non-empty chunk list              |
 | `invalid_utf8.bin`   | Exactly 4 bytes; first byte is `0xff`                                            | A shorter file might not survive binary git operations; a valid UTF-8 prefix would not trigger `UnicodeDecodeError` at byte 0                                                        |
 | `unicode.txt` line 4 | Whitespace-only line uses U+3000 (IDEOGRAPHIC SPACE), not ASCII spaces or tabs   | The pre-commit trailing-whitespace hook strips ASCII whitespace; a line of regular spaces would be silently modified, changing the file's byte content and breaking byte-determinism |
 | `tiny.txt`           | Content is fixed and ASCII-only; supports at least 44 merges at `vocab_size=300` | Changing the content changes `trained_state`, invalidating every byte-equality assertion in `tests/test_persistence.py`                                                              |
@@ -54,14 +54,14 @@ the reliable training target for session-scoped fixtures.
 
 Six lines covering the Unicode edge cases that the trainer and encoder must handle:
 
-1. `Hello 🙂 world 🎉` — emoji (multi-byte UTF-8 sequences)
-2. `你好世界` — CJK characters
-3. `مرحبا بالعالم` — Arabic script
-4. `　　　` — three IDEOGRAPHIC SPACE codepoints (U+3000); the whitespace-only line
-5. `<|endoftext|>` — the reserved special-token literal as ordinary training text
-6. `mixed: 你好 🌍 مرحبا` — multiple scripts on one line
+1. `Hello 🙂 world 🎉`: emoji (multi-byte UTF-8 sequences)
+2. `你好世界`: CJK characters
+3. `مرحبا بالعالم`: Arabic script
+4. `　　　`: three IDEOGRAPHIC SPACE codepoints (U+3000), the whitespace-only line
+5. `<|endoftext|>`: the reserved special-token literal as ordinary training text
+6. `mixed: 你好 🌍 مرحبا`: multiple scripts on one line
 
-Line 5 is load-bearing for FR-15 coverage: the trainer must not pre-extract the literal, so
+Line 5 matters for FR-15 coverage: the trainer must not pre-extract the literal, so
 it must flow through pre-tokenization and pair counting as ordinary bytes.
 
 **`tests/fixtures/empty.txt`** (0 bytes)
@@ -73,7 +73,7 @@ special token is still reserved at ID 256.
 
 The invariant is strict: the file must be exactly 0 bytes, not "effectively empty." A file
 containing only a newline (`\x0a`) would produce `tiny_corpus = "\n"`, which pre-tokenizes
-to `[b"\n"]` — a non-empty chunk. That single-element list has no adjacent pairs, so the
+to `[b"\n"]`, a non-empty chunk. That single-element list has no adjacent pairs, so the
 trainer still early-stops, but the semantic is subtly different from a truly empty corpus
 and would give a false pass to any test that checks for the empty-input path specifically.
 
@@ -86,7 +86,7 @@ invalid start byte` before examining any subsequent bytes.
 
 This file is used exclusively in CLI file-read tests (Phase 4, `tests/test_cli.py`). It is
 never passed to the library-level `train_bpe`, `save`, or `load` functions because those
-accept `str` and `str` paths respectively — the CLI is the only entry point that reads raw
+accept `str` and `str` paths respectively. The CLI is the only entry point that reads raw
 bytes from disk and must handle the decoding failure at the boundary.
 
 ### The whitespace-preservation rule
@@ -139,7 +139,7 @@ If `tiny.txt` is modified, `trained_state` changes. If the trainer is made nonde
 | `tiny_corpus`       | `str`          | `tests/fixtures/tiny.txt` read as UTF-8                |
 | `unicode_corpus`    | `str`          | `tests/fixtures/unicode.txt` read as UTF-8             |
 | `empty_corpus`      | `str`          | `tests/fixtures/empty.txt` read as UTF-8 (always `""`) |
-| `invalid_utf8_path` | `pathlib.Path` | Path object only — content is not decoded              |
+| `invalid_utf8_path` | `pathlib.Path` | Path object only; content is not decoded               |
 
 `invalid_utf8_path` returns a `Path`, not a string, because the file cannot be decoded as
 UTF-8. Tests that use it pass the path to whatever CLI or file-reading code is under test
@@ -175,12 +175,12 @@ directly; there is no `tests/__init__.py` and none should be added.
 
 ## Related reading
 
-- [`docs/phase-2/index.md`](index.md) — Phase 2 scope and reading order
-- [`docs/phase-2/core-algorithm.md`](core-algorithm.md) — trainer behavior that `tiny_corpus`
+- [`docs/phase-2/index.md`](index.md): Phase 2 scope and reading order
+- [`docs/phase-2/core-algorithm.md`](core-algorithm.md): trainer behavior that `tiny_corpus`
   and `unicode_corpus` exercise
-- [`docs/phase-2/persistence.md`](persistence.md) — `trained_state` fixture and the
+- [`docs/phase-2/persistence.md`](persistence.md): `trained_state` fixture and the
   determinism gates it anchors
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-11 (early stop), FR-12
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-11 (early stop), FR-12
   (determinism), FR-15 (special-token handling during training)
-- [`tests/conftest.py`](../../tests/conftest.py) — fixture definitions
-- [`tests/fixtures/`](../../tests/fixtures/) — fixture files
+- [`tests/conftest.py`](../../tests/conftest.py): fixture definitions
+- [`tests/fixtures/`](../../tests/fixtures/): fixture files

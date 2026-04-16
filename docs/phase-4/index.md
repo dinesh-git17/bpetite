@@ -1,5 +1,5 @@
 ---
-title: Phase 4 — CLI, Presentation, Tests, and Benchmark Harness
+title: "Phase 4: CLI, Presentation, Tests, and Benchmark Harness"
 description: Reading guide and vocabulary reference for the bpetite Phase 4 implementation.
 slug: phase-4-index
 order: 30
@@ -7,7 +7,7 @@ category: Phase 4
 published: true
 ---
 
-# Phase 4 — CLI, Presentation, Tests, and Benchmark Harness
+# Phase 4: CLI, Presentation, Tests, and Benchmark Harness
 
 Phase 4 delivers the public-facing surface of bpetite: the `train`, `encode`, and
 `decode` command-line interface; the Rich-based presentation layer that renders every
@@ -71,17 +71,17 @@ FR-keyed invariant table in full detail.
 
 ### Recommended reading order
 
-A portfolio reviewer with no prior context can cover Phase 4 in three passes:
+If you're new to Phase 4, read in this order:
 
-1. **[CLI Contract](cli-contract.md)** — Start here. Read the channel discipline section,
+1. **[CLI Contract](cli-contract.md):** Read the channel discipline section,
    the `train` worked example end-to-end, and the progress-callback wiring block. This is
-   the load-bearing surface every downstream user of bpetite touches. Budget 6–7 minutes.
-2. **[Rich Presentation Layer](rich-presentation.md)** — Read the shared `Console`
+   the main surface every downstream user of bpetite touches. Budget 6–7 minutes.
+2. **[Rich Presentation Layer](rich-presentation.md):** Read the shared `Console`
    section, the themed palette table, and the "why not `rich.progress.Progress`" design
    decision block. Skim the panel helpers on a first pass. Budget 4 minutes.
-3. **[Benchmark Harness](benchmark-harness.md)** — Read the nearest-rank percentile
-   section and the `elapsed_ms` vs command wall clock distinction. The rest is
-   reference-grade for anyone re-running or extending the harness. Budget 3 minutes.
+3. **[Benchmark Harness](benchmark-harness.md):** Read the nearest-rank percentile
+   section and the `elapsed_ms` vs command wall clock distinction. The rest is mostly
+   reference material if you need to rerun or extend the harness. Budget 3 minutes.
 
 A future contributor adding a CLI feature, a new subcommand, or a second benchmark
 should read the relevant area doc in full, including the failure modes table, before
@@ -97,8 +97,9 @@ banner, configuration panel, progress line, and error panel is rendered through 
 Rich `Console` instance constructed with `stderr=True`, so no styled bytes can leak into
 the stdout contract. The subprocess-level contract tests in `tests/test_cli.py` invoke
 the installed entry point via `subprocess.run`, not direct Python imports, so
-stdout/stderr separation is preserved and every failure mode — missing input, invalid
-UTF-8, save without `--force`, unknown decode id, malformed model artifact — is pinned
+stdout/stderr separation is preserved and every failure mode, including missing input,
+invalid UTF-8, save without `--force`, unknown decode id, and malformed model artifact,
+is pinned
 with an explicit test. The benchmark harness in `scripts/bench_encode.py` is standalone:
 it imports only the public `Tokenizer`, encodes a fixed 50-word sentence 100 times
 against a saved artifact, and reports `p50` via `statistics.median` and `p99` via
@@ -117,7 +118,7 @@ locked term is a bug, not a style choice.
 
 | Term                                   | Definition                                                                                                                                                                                                                                                                                                                                                                |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `channel discipline`                   | The load-bearing rule that every machine-readable CLI result goes to `stdout` only and every human-readable element goes to `stderr` only. Enforced by subprocess-level contract tests that capture both streams and assert the boundary.                                                                                                                                 |
+| `channel discipline`                   | The core rule that every machine-readable CLI result goes to `stdout` only and every human-readable element goes to `stderr` only. Enforced by subprocess-level contract tests that capture both streams and assert the boundary.                                                                                                                                         |
 | `machine-readable result`              | The subcommand's one-line stdout payload. For `train`, a JSON object with five required keys. For `encode`, a compact JSON array of token ids. For `decode`, the raw decoded text with no trailing newline.                                                                                                                                                               |
 | `human-readable element`               | Every stderr render: the banner, configuration panel, training lifecycle lines, completion panel, and error panel. All routed through the shared `_ui.py` `Console`.                                                                                                                                                                                                      |
 | `progress lifecycle event`             | One of the three `ProgressEvent` kinds the internal `train_bpe` emits: `"start"` once before the merge loop, `"merge"` every 100 completed merges, and `"complete"` once after the loop exits (including early-stop).                                                                                                                                                     |
@@ -138,19 +139,19 @@ under most tests and is caught only by the specific assertion listed.
 
 ## Related reading
 
-- [Phase 3 Index](../phase-3/index.md) — the public `Tokenizer` class the CLI wraps; the
+- [Phase 3 Index](../phase-3/index.md): the public `Tokenizer` class the CLI wraps; the
   five-method contract that `train`, `encode`, and `decode` delegate to.
-- [Phase 2 Index](../phase-2/index.md) — the deterministic trainer whose progress
+- [Phase 2 Index](../phase-2/index.md): the deterministic trainer whose progress
   callback the CLI threads, and the persistence layer the CLI saves and loads through.
-- [`docs/benchmarks.md`](../benchmarks.md) — baseline encode-latency and training-time
+- [`docs/benchmarks.md`](../benchmarks.md): baseline encode-latency and training-time
   measurements on the reference benchmark machine. Companion to the harness design doc.
-- [`README.md`](../../README.md) — the user-facing installation, CLI examples, and
+- [`README.md`](../../README.md): the user-facing installation, CLI examples, and
   benchmark summary table; the first-time reviewer's entry point.
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-30 through FR-37 (public API,
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-30 through FR-37 (public API,
   CLI, quality gates, byte-typing); §Quality and Performance for the benchmark targets.
-- [`src/bpetite/`](../../src/bpetite/) — Phase 4 source modules (`_cli.py`, `_ui.py`,
+- [`src/bpetite/`](../../src/bpetite/): Phase 4 source modules (`_cli.py`, `_ui.py`,
   `_banner.txt`).
-- [`tests/test_cli.py`](../../tests/test_cli.py) — the subprocess-level contract test
+- [`tests/test_cli.py`](../../tests/test_cli.py): the subprocess-level contract test
   harness.
-- [`scripts/`](../../scripts/) — Phase 4 operational scripts (`bench_encode.py`,
+- [`scripts/`](../../scripts/): Phase 4 operational scripts (`bench_encode.py`,
   `download_corpus.py`).

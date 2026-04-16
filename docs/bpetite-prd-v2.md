@@ -84,7 +84,7 @@ Most engineers use tokenizers as opaque dependencies and cannot reason about the
 ## Constraints
 
 - Core algorithm implementation must be pure Python; no Rust bindings, no C extensions, no external tokenizer libraries in the implementation path.
-- The only runtime dependencies beyond the standard library are `regex` (pre-tokenizer) and `rich` (CLI presentation layer only — must not appear in the core algorithm or `Tokenizer` import path).
+- The only runtime dependencies beyond the standard library are `regex` (pre-tokenizer) and `rich` (CLI presentation layer only, and it must not appear in the core algorithm or `Tokenizer` import path).
 - `vocab_size` refers only to mergeable vocabulary size and excludes reserved special tokens.
 - The artifact format must be a single JSON file.
 - Supported platforms for v1 are macOS and Linux. Windows is not a supported execution target for the provided shell scripts.
@@ -132,7 +132,7 @@ Most engineers use tokenizers as opaque dependencies and cannot reason about the
 
 - FR-13: After merge training completes, the tokenizer reserves `<|endoftext|>` as a special token at the first token ID greater than or equal to the final mergeable vocabulary size.
 - FR-14: In v1, `<|endoftext|>` is the only reserved special token.
-- FR-15: During encoding, the special token is never split by pre-tokenization or BPE merge application. During training, the corpus is pre-tokenized without special-token extraction — `<|endoftext|>` in training text is treated as ordinary characters. Special token reservation occurs after merge training completes.
+- FR-15: During encoding, the special token is never split by pre-tokenization or BPE merge application. During training, the corpus is pre-tokenized without special-token extraction. `<|endoftext|>` in training text is treated as ordinary characters. Special token reservation occurs after merge training completes.
 
 ### Encoding
 

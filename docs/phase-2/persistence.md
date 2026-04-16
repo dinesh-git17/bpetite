@@ -7,13 +7,13 @@ category: Phase 2
 published: true
 ---
 
-# Persistence and Artifact Schema v1 — atomic write, strict reload, byte-deterministic output
+# Persistence and Artifact Schema v1: atomic write, strict reload, byte-deterministic output
 
 ## TL;DR
 
 - `save()` writes a versioned JSON artifact atomically via a same-directory temp file; the same
   in-memory state always produces byte-identical output (`sort_keys=True`, compact separators).
-- `load()` walks a 19-step validation checklist before returning — every shape, range, and
+- `load()` walks a 19-step validation checklist before returning. Every shape, range, and
   cross-field invariant is enforced; no corrupt artifact reaches the caller silently.
 - Two determinism gates in `tests/test_persistence.py` catch the two most dangerous silent
   failures: a missing `sort_keys=True` in the serializer, and upstream trainer nondeterminism.
@@ -24,7 +24,7 @@ published: true
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/bpetite/_persistence.py` | `save()` and `load()` implementations; `_build_artifact()` and all private validation helpers                                                      |
 | `tests/test_persistence.py`   | Round-trip tests, atomic-save semantics, full loader validation checklist, and the two Phase 2 determinism gates                                   |
-| `src/bpetite/_constants.py`   | `SCHEMA_VERSION`, `PRETOKENIZER_PATTERN`, and `END_OF_TEXT_TOKEN` — the three values the artifact pins at write time and re-validates at load time |
+| `src/bpetite/_constants.py`   | `SCHEMA_VERSION`, `PRETOKENIZER_PATTERN`, and `END_OF_TEXT_TOKEN`: the three values the artifact pins at write time and re-validates at load time |
 
 ## Key invariants
 
@@ -38,9 +38,9 @@ published: true
 
 ## Walkthrough
 
-### Artifact Schema v1 — field-by-field
+### Artifact Schema v1: field by field
 
-The loader rejects artifacts with missing fields and with extra fields — the allowed set is
+The loader rejects artifacts with missing fields and with extra fields. The allowed set is
 exactly these six keys (per FR-29). The table documents every field in the wire order produced
 by `sort_keys=True` (alphabetical):
 
@@ -51,7 +51,7 @@ by `sort_keys=True` (alphabetical):
 | `pretokenizer_pattern` | string    | Must equal `PRETOKENIZER_PATTERN` from `src/bpetite/_constants.py`. Locks the artifact to the pre-tokenizer version used during training; a mismatched pattern means the loader would reconstruct a tokenizer whose encoder and trainer disagree on chunk boundaries.                                                                                                   |
 | `schema_version`       | integer   | Must equal `SCHEMA_VERSION` (currently `1`). Booleans rejected.                                                                                                                                                                                                                                                                                                         |
 | `special_tokens`       | object    | Exactly one key: `"<\|endoftext\|>"`. Value is the integer ID `mergeable_vocab_size`. The corresponding `vocab` entry must hold the UTF-8 bytes of the literal string (per FR-13, FR-14).                                                                                                                                                                               |
-| `vocab`                | object    | Maps decimal-string token IDs to byte-value lists. Keys are canonical decimal strings (no leading zeros, no sign, no surrounding whitespace). Values are lists of integers in `0..255`. Covers IDs `0..mergeable_vocab_size` inclusive — the special-token entry is part of `vocab`. Keys are sorted lexicographically as strings (so `"10"` follows `"1"`, not `"2"`). |
+| `vocab`                | object    | Maps decimal-string token IDs to byte-value lists. Keys are canonical decimal strings (no leading zeros, no sign, no surrounding whitespace). Values are lists of integers in `0..255`. Covers IDs `0..mergeable_vocab_size` inclusive. The special-token entry is part of `vocab`. Keys are sorted lexicographically as strings (so `"10"` follows `"1"`, not `"2"`). |
 
 #### Vocab entry invariants
 
@@ -63,17 +63,17 @@ The loader validates three categories of vocab entry in sequence:
 
 2. **Merge-derived entries (IDs 256..mergeable_vocab_size−1).** For the merge at rank `r`,
    token ID is `256 + r` and `vocab[256+r]` must equal `vocab[left] + vocab[right]`. Each
-   merge element must reference an ID strictly less than `256 + r` — no self-reference, no
+   merge element must reference an ID strictly less than `256 + r`; no self-reference, no
    forward reference. Validation runs in rank order, so every referenced ID is already
    validated when checked.
 
 3. **Reserved special token (ID `mergeable_vocab_size`).** `vocab[mergeable_vocab_size]` must
-   equal `"<|endoftext|>".encode("utf-8")` — the 13-byte sequence
+   equal `"<|endoftext|>".encode("utf-8")`: the 13-byte sequence
    `[60, 124, 101, 110, 100, 111, 102, 116, 101, 120, 116, 124, 62]`.
 
 #### Set-equality enforcement
 
-The loader enforces set equality — not subset-plus-presence — at three levels:
+The loader enforces set equality, not subset-plus-presence, at three levels:
 
 1. **Top-level keys.** `data.keys() == _REQUIRED_KEYS`. Extra keys raise `ValueError`;
    missing keys raise `KeyError`.
@@ -117,7 +117,7 @@ crash between the copy and the delete leaves the destination in a partial state.
 `dir=dest.parent` ensures both paths share the same filesystem so the rename is a single
 metadata operation.
 
-This failure mode has no automated test — it only surfaces at runtime on specific mount
+This failure mode has no automated test. It only surfaces at runtime on specific mount
 configurations. The constraint is enforced by code structure, not by CI.
 
 ### Duplicate-key and non-standard constant rejection
@@ -164,19 +164,19 @@ The loader walks these steps in order. An artifact that fails step `n` never rea
 
 Two tests in `tests/test_persistence.py` enforce the byte-determinism requirement from FR-12.
 
-**Gate 1 — `test_same_state_saved_twice_produces_identical_bytes`**
+**Gate 1: `test_same_state_saved_twice_produces_identical_bytes`**
 
 Saves the same trained state to two different paths and asserts
 `first.read_bytes() == second.read_bytes()`. This test catches a missing `sort_keys=True` in
 `json.dumps`. Without `sort_keys`, Python dict iteration order is insertion-order-stable in
 CPython 3.7+ but is not guaranteed identical across restarts, interpreter versions, or
-platforms. The `separators` argument eliminates whitespace variation. Both are load-bearing
+platforms. The `separators` argument eliminates whitespace variation. Both matter
 for the determinism contract.
 
-**Gate 2 — `test_repeated_training_then_saving_produces_identical_artifacts`**
+**Gate 2: `test_repeated_training_then_saving_produces_identical_artifacts`**
 
 Trains the same corpus twice with the same `vocab_size`, saves both results, and asserts
-byte-identity. This test proves the full pipeline — pre-tokenizer, trainer, and persistence —
+byte-identity. This test proves the full pipeline, pre-tokenizer, trainer, and persistence,
 is deterministic end-to-end (FR-12). A Gate 1 failure implicates the serializer. A Gate 2
 failure with Gate 1 passing implicates the trainer or pre-tokenizer.
 
@@ -259,13 +259,13 @@ before `merges` because `"a" < "s"`. Vocab keys are also sorted alphabetically a
 | Trainer nondeterminism                 | non-deterministic bytes                   | FR-12 | `test_repeated_training_then_saving_produces_identical_artifacts` |
 | Parent directory missing               | `FileNotFoundError`                       | FR-28 | `test_save_raises_file_not_found_when_parent_directory_missing`   |
 | Destination exists, `overwrite=False`  | `FileExistsError`                         | FR-27 | `test_save_refuses_to_overwrite_existing_file_by_default`         |
-| Cross-device temp file                 | non-atomic write (runtime only)           | FR-28 | _(no automated test — code-level constraint)_                     |
+| Cross-device temp file                 | non-atomic write (runtime only)           | FR-28 | _(no automated test; code-level constraint)_                      |
 
 ## Related reading
 
-- [`docs/phase-2/index.md`](index.md) — Phase 2 scope and reading order
-- [`docs/phase-2/core-algorithm.md`](core-algorithm.md) — trainer and pre-tokenizer that produce
+- [`docs/phase-2/index.md`](index.md): Phase 2 scope and reading order
+- [`docs/phase-2/core-algorithm.md`](core-algorithm.md): trainer and pre-tokenizer that produce
   the state `save()` consumes
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-12, FR-26 through FR-29
-- [`src/bpetite/_persistence.py`](../../src/bpetite/_persistence.py) — implementation
-- [`tests/test_persistence.py`](../../tests/test_persistence.py) — full test suite
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-12, FR-26 through FR-29
+- [`src/bpetite/_persistence.py`](../../src/bpetite/_persistence.py): implementation
+- [`tests/test_persistence.py`](../../tests/test_persistence.py): full test suite

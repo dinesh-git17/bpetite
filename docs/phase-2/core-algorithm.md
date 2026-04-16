@@ -7,14 +7,14 @@ category: Phase 2
 published: true
 ---
 
-# Core Algorithm — pre-tokenize, count, merge, reserve
+# Core Algorithm: pre-tokenize, count, merge, reserve
 
 ## TL;DR
 
 - The pre-tokenizer splits text into chunks using a single centralized regex; no pair ever
   bridges a chunk boundary during training or encoding.
 - At each merge step the highest-frequency adjacent pair wins; ties break on lexicographic
-  tuple ordering — `min(..., key=lambda item: (-count, pair))` — making training fully
+  tuple ordering, `min(..., key=lambda item: (-count, pair))`, making training fully
   deterministic without a custom comparator.
 - Special-token reservation (`<|endoftext|>` at ID `mergeable_vocab_size`) happens after
   merge training completes; the literal is never pre-extracted from the training corpus.
@@ -24,7 +24,7 @@ published: true
 | File                           | Purpose                                                                                                                                                                                                          |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/bpetite/_constants.py`    | Single source of truth for `PRETOKENIZER_PATTERN`, `SCHEMA_VERSION`, and `END_OF_TEXT_TOKEN`; centralizing these prevents the pre-tokenizer, trainer, encoder, and persistence layer from drifting independently |
-| `src/bpetite/_pretokenizer.py` | `pretokenize()` — compiles the canonical pattern once at import time and returns UTF-8 byte chunks in source order                                                                                               |
+| `src/bpetite/_pretokenizer.py` | `pretokenize()`: compiles the canonical pattern once at import time and returns UTF-8 byte chunks in source order                                                                                               |
 | `src/bpetite/_trainer.py`      | `train_bpe()`, `TrainerResult`, `ProgressEvent`, and the four private helpers: `_count_pairs`, `_select_best_pair`, `_apply_merge_to_words`, `_apply_merge_to_word`                                              |
 | `tests/test_trainer.py`        | FR-7 through FR-15 coverage: chunk boundary enforcement, base vocab, vocab size validation, tie-breaking, non-overlapping merges, early stop, determinism, and special-token reservation                         |
 
@@ -64,7 +64,7 @@ escapes that `re` does not support.
 
 Centralizing the pattern in `_constants.py` prevents drift: if the encoder were to import its
 own copy and a character class were edited in one place but not the other, the encoder and
-trainer would disagree on chunk boundaries — silently, with no import-time error.
+trainer would disagree on chunk boundaries. There would be no import-time error.
 
 The pattern is compiled exactly once at `_pretokenizer.py` module import time
 (`src/bpetite/_pretokenizer.py:14`). Recompiling on every `pretokenize()` call would be
@@ -95,8 +95,8 @@ correct but wasteful for large corpora.
   TrainerResult
 ```
 
-The corpus is pre-tokenized once. Every subsequent operation — pair counting, merge
-application — works on the chunk representation. Pairs never cross chunk boundaries (FR-7)
+The corpus is pre-tokenized once. Every subsequent operation, pair counting and merge
+application, works on the chunk representation. Pairs never cross chunk boundaries (FR-7)
 because `_count_pairs` iterates `pairwise(word)` independently for each chunk, and
 `_apply_merge_to_word` processes each chunk in isolation.
 
@@ -139,8 +139,8 @@ The key `(-count, pair)` sorts by descending count first, then by ascending tupl
 Standard Python tuple comparison is element-wise: `(97, 98) < (99, 97)` because `97 < 99`
 on the first element. No custom comparator is needed.
 
-The alternative wrong patterns — `max(..., key=count)` with no tie-break, or
-`Counter.most_common(1)` which returns first-seen under ties — both produce nondeterministic
+The alternative wrong patterns, `max(..., key=count)` with no tie-break and
+`Counter.most_common(1)` which returns first-seen under ties, both produce nondeterministic
 output across Python versions and platforms.
 
 The test that distinguishes correct tie-breaking from these wrong patterns is
@@ -177,7 +177,7 @@ merge `(x, x)`:
 
 - The left pair at positions 0–1 is consumed; `i` advances to 2.
 - Position 2 holds a single `x` with no right neighbor; it is emitted as-is.
-- Result: `(xx, x)` — the leading pair merges, the trailing `x` is untouched.
+- Result: `(xx, x)`. The leading pair merges, and the trailing `x` is untouched.
 - The alternative `(x, xx)` is never produced because index 1 is never re-examined.
 
 This is verified by
@@ -185,15 +185,15 @@ This is verified by
 
 After applying the merge across all chunks, `_apply_merge_to_words` accumulates the results
 into a new `{merged_chunk: count}` dict. Two distinct pre-tokens that become identical after
-a merge are combined — their counts add. This is the only place corpus multiplicity can
+a merge are combined, and their counts add. This is the only place corpus multiplicity can
 change between steps.
 
 ### Early stop
 
 The merge loop runs for at most `vocab_size - 256` iterations. At the start of each
 iteration, `_count_pairs` re-counts the current chunk state. If the returned counter is
-empty — meaning every chunk in the corpus has collapsed to a single token and no within-chunk
-pairs remain — the loop breaks immediately (FR-11).
+empty, meaning every chunk in the corpus has collapsed to a single token and no within-chunk
+pairs remain, the loop breaks immediately (FR-11).
 
 Early stop is not an error. `TrainerResult.mergeable_vocab_size` reports the actual count
 `256 + len(merges)`, which may be smaller than the requested `vocab_size`. The special token
@@ -204,7 +204,7 @@ the quota is filled. The test
 `tests/test_trainer.py::test_train_early_stops_instead_of_merging_across_chunk_boundaries`
 demonstrates a subtler case: corpus `"ab\nab\nab\nab\nab"` pre-tokenizes into alternating
 `b"ab"` and `b"\n"` chunks. After one merge `(97, 98) -> 256`, every `b"ab"` chunk becomes
-`(256,)` — a single token. The `b"\n"` chunks were always single tokens. No within-chunk
+`(256,)`, a single token. The `b"\n"` chunks were always single tokens. No within-chunk
 pairs remain, so training stops at exactly one merge even though `vocab_size=300` was
 requested. A flatten-then-count implementation would see the cross-boundary pair `(10, 256)`
 four times after the first merge and keep going, producing the wrong merge list.
@@ -212,7 +212,7 @@ four times after the first merge and keep going, producing the wrong merge list.
 ### Special-token reservation
 
 After the merge loop exits, `train_bpe` assigns `<|endoftext|>` the ID
-`mergeable_vocab_size` — the first integer at or past the learned mergeable range — and
+`mergeable_vocab_size`, the first integer at or past the learned mergeable range, and
 populates `vocab[mergeable_vocab_size]` with the UTF-8 bytes of the literal string (per
 FR-13, FR-15):
 
@@ -229,9 +229,9 @@ corpus with the literal produces different merges than the same corpus without i
 that pre-extracted and dropped the literal would produce identical merges, which the test
 catches.
 
-The `vocab` entry at the special-token ID is load-bearing for decoding: the decoder resolves
+The `vocab` entry at the special-token ID is required for decoding: the decoder resolves
 every token ID through a single `vocab` lookup, so the special-token bytes must be present
-there — not in a parallel dict.
+there, not in a parallel dict.
 
 ### Worked example
 
@@ -304,11 +304,11 @@ because it appears only in `b" ab"` chunks.
 
 ## Related reading
 
-- [`docs/phase-2/index.md`](index.md) — Phase 2 scope and reading order
-- [`docs/phase-2/persistence.md`](persistence.md) — how the trained state is serialized and
+- [`docs/phase-2/index.md`](index.md): Phase 2 scope and reading order
+- [`docs/phase-2/persistence.md`](persistence.md): how the trained state is serialized and
   reloaded; determinism gate 2 closes the loop on FR-12
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-4 through FR-15
-- [`src/bpetite/_trainer.py`](../../src/bpetite/_trainer.py) — implementation
-- [`src/bpetite/_pretokenizer.py`](../../src/bpetite/_pretokenizer.py) — pre-tokenizer
-- [`src/bpetite/_constants.py`](../../src/bpetite/_constants.py) — canonical pattern and constants
-- [`tests/test_trainer.py`](../../tests/test_trainer.py) — full test suite
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-4 through FR-15
+- [`src/bpetite/_trainer.py`](../../src/bpetite/_trainer.py): implementation
+- [`src/bpetite/_pretokenizer.py`](../../src/bpetite/_pretokenizer.py): pre-tokenizer
+- [`src/bpetite/_constants.py`](../../src/bpetite/_constants.py): canonical pattern and constants
+- [`tests/test_trainer.py`](../../tests/test_trainer.py): full test suite

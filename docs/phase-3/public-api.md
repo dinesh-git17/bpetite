@@ -7,12 +7,12 @@ category: Phase 3
 published: true
 ---
 
-# Public Tokenizer API — five-method contract, delegation-only implementation
+# Public Tokenizer API: five-method contract, delegation-only implementation
 
 ## TL;DR
 
 - `Tokenizer` is the single public name exported from `bpetite`; the full
-  surface is five methods — `train`, `encode`, `decode`, `save`, `load` —
+  surface is five methods: `train`, `encode`, `decode`, `save`, `load`,
   matching PRD lines 254–269 exactly.
 - Instance state is private (`_vocab`, `_merges`, `_special_tokens`); `train`
   and `load` are classmethod factories, and `encode` always reads its `text`
@@ -26,7 +26,7 @@ published: true
 | File                          | Purpose                                                                                                                     |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `src/bpetite/_tokenizer.py`   | `Tokenizer` class; constructor stores normalized state, each public method is a one-line wrapper over the internal function |
-| `src/bpetite/__init__.py`     | Exports exactly one name — `Tokenizer` — via `__all__ = ["Tokenizer"]`; no convenience re-exports                           |
+| `src/bpetite/__init__.py`     | Exports exactly one name, `Tokenizer`, via `__all__ = ["Tokenizer"]`; no convenience re-exports                              |
 | `src/bpetite/_trainer.py`     | `train_bpe` and `TrainerResult`; `Tokenizer.train` calls it and normalizes the result into mutable `dict`/`list` state      |
 | `src/bpetite/_encoder.py`     | `encode`; `Tokenizer.encode` forwards the method argument `text` directly                                                   |
 | `src/bpetite/_decoder.py`     | `decode`; `Tokenizer.decode` forwards the method argument `token_ids` directly                                              |
@@ -77,7 +77,7 @@ guarantee.
 ```
 
 `train` and `load` are classmethods, so their rendered signatures start
-directly with the non-`self` arguments — the `cls` parameter is absorbed
+directly with the non-`self` arguments. The `cls` parameter is absorbed
 by the descriptor.
 
 ### End-to-end session
@@ -160,7 +160,7 @@ invariant enforced by the Task 3-3 implementation note:
 
 An implementation that caches the last encoded text on `self._text` and
 reads from it inside `encode` still returns the correct IDs on any single
-call — the cache is seeded from the method argument. Two consecutive calls
+call. The cache is seeded from the method argument. Two consecutive calls
 with different inputs silently return the first call's IDs for the second.
 The invariant is enforced by the tight wrapper at
 `src/bpetite/_tokenizer.py:78`; any change to that wrapper that references
@@ -168,20 +168,20 @@ The invariant is enforced by the tight wrapper at
 
 ## Related reading
 
-- [Encode and Decode](encode-decode.md) — how `Tokenizer.encode` and
+- [Encode and Decode](encode-decode.md): how `Tokenizer.encode` and
   `Tokenizer.decode` actually produce and consume IDs, with a worked example
   traced end-to-end through special-token extraction, pre-tokenization, and
   per-rank merge application.
-- [Roundtrip Suite](roundtrip-suite.md) — the 55-test proof of FR-25 against
+- [Roundtrip Suite](roundtrip-suite.md): the 55-test proof of FR-25 against
   the public API only, including the save/load parity coverage.
-- [Phase 2 Persistence](../phase-2/persistence.md) — the `save`/`load`
+- [Phase 2 Persistence](../phase-2/persistence.md): the `save`/`load`
   contract that `Tokenizer.save` and `Tokenizer.load` delegate to.
-- [Phase 2 Core Algorithm](../phase-2/core-algorithm.md) — the `train_bpe`
+- [Phase 2 Core Algorithm](../phase-2/core-algorithm.md): the `train_bpe`
   contract that `Tokenizer.train` delegates to and normalizes into mutable
   instance state.
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-9, FR-16, FR-17,
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-9, FR-16, FR-17,
   FR-20, FR-21, FR-25 through FR-29; §Public API Contract, lines 254–269.
-- [`src/bpetite/_tokenizer.py`](../../src/bpetite/_tokenizer.py) — the full
+- [`src/bpetite/_tokenizer.py`](../../src/bpetite/_tokenizer.py): the full
   `Tokenizer` class; ~130 lines total, no algorithmic logic.
-- [`src/bpetite/__init__.py`](../../src/bpetite/__init__.py) — the export
+- [`src/bpetite/__init__.py`](../../src/bpetite/__init__.py): the export
   line that locks the public surface to `Tokenizer` only.

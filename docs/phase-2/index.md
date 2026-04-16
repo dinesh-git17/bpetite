@@ -1,5 +1,5 @@
 ---
-title: Phase 2 — Core Algorithm, Fixtures, and Persistence
+title: "Phase 2: Core Algorithm, Fixtures, and Persistence"
 description: Reading guide and vocabulary reference for the bpetite Phase 2 implementation.
 slug: phase-2-index
 order: 10
@@ -7,7 +7,7 @@ category: Phase 2
 published: true
 ---
 
-# Phase 2 — Core Algorithm, Fixtures, and Persistence
+# Phase 2: Core Algorithm, Fixtures, and Persistence
 
 Phase 2 delivers the three components that make bpetite a working, reproducible tokenizer:
 a deterministic byte-level BPE trainer, a versioned artifact format with a strict loader, and
@@ -19,7 +19,7 @@ a fixed test fixture set that anchors the suite to byte-exact expected outputs.
   `vocab_size`, same code revision → identical artifact bytes, every time.
 - The persistence layer serializes the trained state to a single versioned JSON file with
   atomic writes and a 19-step loader that rejects every class of corrupt artifact.
-- Three area docs (D2, D3, D4) each stand alone; this index is the entry point and the
+- Three area docs (D2, D3, D4) cover separate areas; this index is the entry point and the
   single place where vocabulary terms are defined.
 
 ## What lives here
@@ -36,7 +36,7 @@ a fixed test fixture set that anchors the suite to byte-exact expected outputs.
 
 | Module                         | Task | Role                                                                                                                   |
 | ------------------------------ | ---- | ---------------------------------------------------------------------------------------------------------------------- |
-| `src/bpetite/_constants.py`    | 2-1  | Canonical regex pattern, schema version, special-token literal — single source of truth for values that must not drift |
+| `src/bpetite/_constants.py`    | 2-1  | Canonical regex pattern, schema version, special-token literal: single source of truth for values that must not drift |
 | `src/bpetite/_pretokenizer.py` | 2-2  | GPT-2-style pre-tokenizer; compiles the pattern once at import time                                                    |
 | `src/bpetite/_trainer.py`      | 2-3  | Deterministic BPE trainer; produces `TrainerResult` with merges, vocab, and special-token reservation                  |
 | `src/bpetite/_persistence.py`  | 2-4  | Atomic `save()` and validating `load()` for Artifact Schema v1                                                         |
@@ -58,19 +58,19 @@ invariant table in full detail.
 
 ### Recommended reading order
 
-A portfolio reviewer with no prior context can cover Phase 2 in three passes:
+If you're new to Phase 2, read in this order:
 
-1. **[Core Algorithm](core-algorithm.md)** — Start here. Read the two-phase training model
+1. **[Core Algorithm](core-algorithm.md):** Read the two-phase training model
    diagram, the tie-breaking section, and the worked example
    (`train_bpe("ab ab ab", vocab_size=258)`). This is the algorithmic heart of the project.
    Budget 5–6 minutes.
 
-2. **[Persistence and Artifact Schema v1](persistence.md)** — Read the field-by-field schema
+2. **[Persistence and Artifact Schema v1](persistence.md):** Read the field-by-field schema
    table and the atomic save diagram. The loader validation checklist (19 steps) and the two
    determinism gates are the most technically dense section; skim them on a first pass. Budget
    4–5 minutes.
 
-3. **[Test Fixtures](fixtures.md)** — Skim. The whitespace-preservation rule and the
+3. **[Test Fixtures](fixtures.md):** Skim the whitespace-preservation rule and the
    `tiny.txt` → `trained_state` chain are the only non-obvious points. Budget 2 minutes.
 
 A future contributor adding a feature or fixing a bug should read the relevant area doc in
@@ -84,7 +84,7 @@ within each chunk (never across boundaries), selects the most frequent pair (tie
 lexicographically), replaces it non-overlappingly left-to-right, and repeats until the
 `vocab_size` quota is met or no pairs remain. The reserved special token
 `<|endoftext|>` is assigned the first ID past the learned mergeable range after training
-completes. The resulting state — merge list, vocabulary, special-token mapping — is
+completes. The resulting state, including the merge list, vocabulary, and special-token mapping, is
 serialized to a single JSON artifact with `sort_keys=True` and compact separators, making
 the output byte-deterministic. The loader re-validates every field, cross-checks every
 derived value, and rejects artifacts with missing, extra, or malformed content before
@@ -114,11 +114,11 @@ most tests and is caught only by the specific test listed.
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | ----------------------------------- |
 | Wrong tie-break ordering               | Any corpus where the lex-first pair also has the highest count will pass; only a deliberately constructed tie exposes it | `tests/test_trainer.py::test_train_tie_breaking_picks_lexicographically_smallest_pair` | [Core Algorithm](core-algorithm.md) |
 | Missing `sort_keys=True` in serializer | A single save and load round-trips correctly; only comparing two saves of the same state exposes byte divergence         | `tests/test_persistence.py::test_same_state_saved_twice_produces_identical_bytes`      | [Persistence](persistence.md)       |
-| Cross-device temp-file atomic replace  | Only surfaces at runtime on network or cross-device mounts; no local test can reproduce it                               | No automated test — code-level constraint in `_persistence.py:107`                     | [Persistence](persistence.md)       |
+| Cross-device temp-file atomic replace  | Only surfaces at runtime on network or cross-device mounts; no local test can reproduce it                               | No automated test; code-level constraint in `_persistence.py:107`                      | [Persistence](persistence.md)       |
 
 ## Related reading
 
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — FR-4 through FR-15 (core algorithm),
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): FR-4 through FR-15 (core algorithm),
   FR-26 through FR-29 (persistence), FR-12 (determinism)
-- [`src/bpetite/`](../../src/bpetite/) — Phase 2 source modules
-- [`tests/`](../../tests/) — test suite
+- [`src/bpetite/`](../../src/bpetite/): Phase 2 source modules
+- [`tests/`](../../tests/): test suite

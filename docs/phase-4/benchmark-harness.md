@@ -7,7 +7,7 @@ category: Phase 4
 published: true
 ---
 
-# Benchmark Harness — encode-latency measurement design
+# Benchmark Harness: encode-latency measurement design
 
 ## TL;DR
 
@@ -152,7 +152,7 @@ def _run_encode_samples(tokenizer: Tokenizer, sentence: str, runs: int) -> list[
 
 Two small details matter. **`encode = tokenizer.encode`** binds the bound method to a
 local once before the loop, avoiding 100 attribute lookups during timing. The cost is
-a fraction of a microsecond per lookup — negligible in absolute terms — but the local
+a fraction of a microsecond per lookup, negligible in absolute terms, but the local
 binding makes the timed code path as direct as possible. **`time.perf_counter()`** is
 the highest-resolution monotonic clock the standard library exposes and is the right
 choice for short-interval wall-clock measurement; it is unaffected by system clock
@@ -237,7 +237,7 @@ the argument boundary.
 
 ### The `elapsed_ms` scope distinction
 
-The most load-bearing observation in this doc: `elapsed_ms` from the `train` CLI is
+The most important point in this doc is that `elapsed_ms` from the `train` CLI is
 not the command wall clock.
 
 The `train` subcommand starts a `time.perf_counter` immediately after the corpus read
@@ -276,7 +276,7 @@ outer `time(1)` total is 185.09 s (185,090 ms). The delta is 166.26 ms, dominate
 Python startup and atomic save. As a fraction of the total it is rounding error.
 
 At `vocab_size=512` on the same corpus, the trainer span is 4,620.24 ms. The outer
-`time(1)` total at the same scale is also captured in `docs/benchmarks.md` — and even
+`time(1)` total at the same scale is also captured in `docs/benchmarks.md`, and even
 at this scale the gap is meaningful relative to the trainer span. At `vocab_size=256`
 (zero merges, instant trainer span) the trainer span would be a fraction of a
 millisecond and the outer `time(1)` would still be hundreds of milliseconds dominated
@@ -357,8 +357,8 @@ to something like "the full pipeline including corpus read and atomic save". A
 reviewer cross-referencing the field against a `time bpetite train` invocation sees
 a delta and concludes the trainer is slower than the JSON claims, when the trainer
 is exactly as fast as the JSON claims and the outer wall clock is just measuring
-something different. Every label on this field — in `docs/benchmarks.md`, in the
-README, and in this doc — must explicitly name the scope as "trainer span only,
+something different. Every label on this field, in `docs/benchmarks.md`, in the
+README, and in this doc, must explicitly name the scope as "trainer span only,
 excludes file I/O, argparse, Python startup".
 
 **Percentile drift from numpy.** A maintainer reaching for a more "standard" library
@@ -381,17 +381,17 @@ words, do not remove words.
 
 ## Related reading
 
-- [CLI Contract](cli-contract.md) — the `train` subcommand's `elapsed_ms` field, the
+- [CLI Contract](cli-contract.md): the `train` subcommand's `elapsed_ms` field, the
   channel discipline the harness mirrors without Rich, and the `_cmd_train` timer
   boundary at `_cli.py:112-114`.
-- [Rich Presentation Layer](rich-presentation.md) — why the CLI proper uses Rich for
+- [Rich Presentation Layer](rich-presentation.md): why the CLI proper uses Rich for
   panels and the harness deliberately does not.
-- [`docs/benchmarks.md`](../benchmarks.md) — baseline values produced by this
+- [`docs/benchmarks.md`](../benchmarks.md): baseline values produced by this
   harness; reference machine fingerprint; full reproduction commands.
-- [`README.md`](../../README.md) — user-facing benchmark summary table; cross-links
+- [`README.md`](../../README.md): user-facing benchmark summary table; cross-links
   to `docs/benchmarks.md` for full reproduction details.
-- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md) — §Quality and Performance
+- [`docs/bpetite-prd-v2.md`](../bpetite-prd-v2.md): §Quality and Performance
   performance targets; FR-30 (public API surface the harness uses).
-- [`scripts/bench_encode.py`](../../scripts/bench_encode.py) — full harness source.
-- [`src/bpetite/_cli.py`](../../src/bpetite/_cli.py) — `_cmd_train` and the
+- [`scripts/bench_encode.py`](../../scripts/bench_encode.py): full harness source.
+- [`src/bpetite/_cli.py`](../../src/bpetite/_cli.py): `_cmd_train` and the
   `elapsed_ms` timer boundaries.
