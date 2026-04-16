@@ -65,13 +65,13 @@
 </section>
 
 <section class="section" id="overview">
-  <div class="section__head">
+  <div class="section__head reveal">
     <span class="section__kicker">01</span>
     <h2 class="section__title">what it is</h2>
   </div>
   <div class="section__grid">
-    <div class="section__prose">{{ overview_html | safe }}</div>
-    <dl class="invariants" aria-label="invariants">
+    <div class="section__prose reveal-delay">{{ overview_html | safe }}</div>
+    <dl class="invariants reveal-stagger" aria-label="invariants">
       {% for item in invariants %}
       <div class="invariants__row">
         <dt class="invariants__key">{{ item.key }}</dt>
@@ -83,15 +83,15 @@
 </section>
 
 <section class="section section--why" id="why">
-  <div class="section__head">
+  <div class="section__head reveal">
     <span class="section__kicker">02</span>
     <h2 class="section__title">why I built it</h2>
   </div>
-  <div class="section__prose section__prose--wide">{{ why_html | safe }}</div>
+  <div class="section__prose section__prose--wide reveal-delay">{{ why_html | safe }}</div>
 </section>
 
 <section class="section section--docs" id="docs">
-  <div class="section__head">
+  <div class="section__head reveal">
     <span class="section__kicker">03</span>
     <h2 class="section__title">documentation</h2>
     <p class="section__note">
@@ -99,7 +99,7 @@
       will land as the codebase grows.
     </p>
   </div>
-  <ol class="doclist">
+  <ol class="doclist reveal-stagger">
     {% for doc in docs %}
     <li class="doclist__row">
       <a class="doclist__link" href="{{ base }}/docs/{{ doc.slug }}.html">

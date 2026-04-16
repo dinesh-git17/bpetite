@@ -1,4 +1,5 @@
-// bpetite docs: tiny runtime. Code-block copy + smooth anchor jumps.
+// bpetite docs: tiny runtime. Code-block copy, smooth anchor jumps,
+// scroll-reveal animations.
 // Kept pure and dependency-free so the strict CSP (script-src 'self') holds.
 (() => {
   "use strict";
@@ -42,6 +43,38 @@
     });
   };
 
+  /**
+   * Scroll-reveal: observe elements with .reveal, .reveal-delay, or
+   * .reveal-stagger and add .is-visible when they enter the viewport.
+   * Respects prefers-reduced-motion: if the user prefers reduced motion,
+   * skip observation entirely (CSS leaves everything visible by default).
+   */
+  const initScrollReveal = () => {
+    const prefersReduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (prefersReduced) return;
+
+    const targets = document.querySelectorAll(
+      ".reveal, .reveal-delay, .reveal-stagger"
+    );
+    if (!targets.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    targets.forEach((el) => observer.observe(el));
+  };
+
   const onReady = (fn) => {
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", fn, { once: true });
@@ -50,5 +83,8 @@
     }
   };
 
-  onReady(enhanceCodeBlocks);
+  onReady(() => {
+    enhanceCodeBlocks();
+    initScrollReveal();
+  });
 })();
